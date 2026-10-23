@@ -1,4 +1,6 @@
 // The info panel in the bottom left corner.
+import { countStoredTiles, clearStoredTiles } from './tile-store.js';
+
 const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
 
 export function createPanel({ onReset, onSettingsChange }) {
@@ -18,8 +20,20 @@ export function createPanel({ onReset, onSettingsChange }) {
     el(id).addEventListener('change', () => onSettingsChange(settings()));
   }
 
+  const refreshCacheInfo = async () => {
+    const count = await countStoredTiles();
+    el('clear-cache').textContent = `Höhendaten-Cache leeren (${count} Kacheln)`;
+    el('clear-cache').disabled = count === 0;
+  };
+  el('clear-cache').addEventListener('click', async () => {
+    await clearStoredTiles();
+    refreshCacheInfo();
+  });
+  refreshCacheInfo();
+
   return {
     settings,
+    refreshCacheInfo,
     showPoints(start, end) {
       el('start-coords').textContent = start ? formatLatLng(start) : '–';
       el('end-coords').textContent = end ? formatLatLng(end) : '–';

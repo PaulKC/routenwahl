@@ -49,6 +49,7 @@ export function createElevationLayer(map, showStatus) {
     const loadedTiles = [];
     let loaded = 0;
     let failed = 0;
+    let fromStore = 0;
     let bytes = 0;
     let min = Infinity;
     let max = -Infinity;
@@ -56,7 +57,7 @@ export function createElevationLayer(map, showStatus) {
       const mb = (bytes / 1e6).toFixed(1);
       const range = loaded ? `, ${Math.round(min)}–${Math.round(max)} m ü. M.` : '';
       const errors = failed ? `, ${failed} Fehler` : '';
-      showStatus(`Höhendaten: ${loaded}/${tiles.length} Kacheln (${mb} MB)${range}${errors}`);
+      showStatus(`Höhendaten: ${loaded}/${tiles.length} Kacheln (${mb} MB, ${fromStore} aus dem Cache)${range}${errors}`);
     };
     showProgress();
 
@@ -65,6 +66,7 @@ export function createElevationLayer(map, showStatus) {
       if (data) {
         loaded += 1;
         loadedTiles.push(data);
+        if (data.fromStore) fromStore += 1;
         bytes += data.bytes;
         min = Math.min(min, data.min);
         max = Math.max(max, data.max);

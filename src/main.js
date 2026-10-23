@@ -21,6 +21,7 @@ const routes = createRouteLayer(map, panel.showRouteStatus);
 async function findRoutes(start, end) {
   routes.clear();
   const tiles = await elevation.load(start, end);
+  panel.refreshCacheInfo();
   // Skip if the points moved again while the tiles were loading.
   const current = picker.latLngs();
   if (!tiles || !current.start?.equals(start) || !current.end?.equals(end)) return;
