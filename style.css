@@ -37,10 +37,6 @@ body,
 
 /* Colours must match COLORS in src/route-layer.js and the styles in src/elevation-layer.js. */
 #legend {
-  position: absolute;
-  top: 60px;
-  right: 10px;
-  z-index: 1000;
   padding: 8px 10px;
   background: white;
   border-radius: 6px;

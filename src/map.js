@@ -37,7 +37,22 @@ export function createMap(elementId) {
 
   L.control.layers(baseLayers, overlays).addTo(map);
   L.control.scale({ imperial: false }).addTo(map);
+  // As a control in the same corner, Leaflet stacks the legend below the layer switcher,
+  // so it moves down instead of overlapping when the switcher opens.
+  addElementAsControl(map, 'legend', 'topright');
   return map;
+}
+
+function addElementAsControl(map, elementId, position) {
+  const element = document.getElementById(elementId);
+  const control = L.control({ position });
+  control.onAdd = () => {
+    element.classList.add('leaflet-control');
+    L.DomEvent.disableClickPropagation(element);
+    L.DomEvent.disableScrollPropagation(element);
+    return element;
+  };
+  control.addTo(map);
 }
 
 // The last map position and zoom are kept in localStorage so a reload opens at the same spot.
