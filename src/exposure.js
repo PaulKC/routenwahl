@@ -1,11 +1,16 @@
 // Exposure: a cell can be gentle enough to ski, but if you fall there you slide down the
-// fall line. A cell counts as exposed when, within fallDistance metres, its fall line runs
-// into a cliff: a stretch of terrain at least as steep as cliffAngle that drops at least
-// minFallHeight metres (so small walls and embankments don't count).
+// fall line. A cell counts as exposed when its fall line runs into a cliff: a stretch of
+// terrain at least as steep as cliffAngle that drops at least minFallHeight metres (so
+// small walls and embankments don't count).
 //
-// The fall line is followed cell by cell, always to the neighbour with the steepest drop,
-// until it has covered fallDistance or reaches a spot with no lower neighbour. A cliff that
-// starts within fallDistance is followed to its foot to measure its full height.
+// The fall line is followed cell by cell, always to the neighbour with the steepest drop.
+// It is followed for fallDistance metres, and further for as long as the terrain is steep
+// enough to keep sliding. A cliff found on the way is followed to its foot to measure its
+// full height. In the 2 m data rock faces often alternate between just above and just below
+// cliffAngle, so short gentler gaps inside a cliff don't end it.
+
+const KEEP_SLIDING_ANGLE = 30; // degrees: on terrain this steep a fall doesn't stop
+const CLIFF_GAP = 10; // metres of gentler terrain that still count as part of the same cliff
 
 // Returns a Uint8Array with 1 for every cell where test(cell) holds and that is exposed.
 export function findExposedCells(grid, test, { fallDistance, cliffAngle, minFallHeight }) {
@@ -38,26 +43,40 @@ export function findExposedCells(grid, test, { fallDistance, cliffAngle, minFall
     return best;
   };
 
-  for (let cell = 0; cell < size; cell += 1) {
-    if (!test(cell)) continue;
+  const fallsOffCliff = (cell) => {
     let travelled = 0;
-    let cliffDrop = 0; // height lost so far on the current steep stretch
-    for (let at = cell; at !== -1;) {
-      const steep = slopes[at] >= cliffAngle;
-      if (!steep) cliffDrop = 0;
-      if (!steep && travelled > fallDistance) break;
+    let inCliff = false;
+    let cliffDrop = 0; // height lost so far on the current cliff
+    let gap = 0; // metres of gentler terrain since the last cliff cell
+    for (let at = cell; ;) {
+      if (slopes[at] >= cliffAngle) {
+        inCliff = true;
+        gap = 0;
+      }
+      const stillSliding = travelled <= fallDistance || slopes[at] >= KEEP_SLIDING_ANGLE;
+      if (!inCliff && !stillSliding) return false;
+
       const next = fallLineStep(at);
-      if (next === -1) break;
-      if (steep) {
+      if (next === -1) return false;
+      const step = next % width !== at % width && Math.floor(next / width) !== Math.floor(at / width) ? diagonal : cellSize;
+      if (inCliff) {
         cliffDrop += heights[at] - heights[next];
-        if (cliffDrop >= minFallHeight) {
-          exposed[cell] = 1;
-          break;
+        if (cliffDrop >= minFallHeight) return true;
+        if (slopes[at] < cliffAngle) {
+          gap += step;
+          if (gap > CLIFF_GAP) {
+            inCliff = false;
+            cliffDrop = 0;
+          }
         }
       }
-      travelled += next % width !== at % width && Math.floor(next / width) !== Math.floor(at / width) ? diagonal : cellSize;
+      travelled += step;
       at = next;
     }
+  };
+
+  for (let cell = 0; cell < size; cell += 1) {
+    if (test(cell) && fallsOffCliff(cell)) exposed[cell] = 1;
   }
   return exposed;
 }
