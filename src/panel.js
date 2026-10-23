@@ -12,8 +12,9 @@ export function createPanel({ onReset, onSettingsChange }) {
     goalRadius: Math.max(0, Number(el('goal-radius').value) || 0),
     cliffAngle: Math.min(90, Math.max(0, Number(el('cliff-angle').value) || 0)),
     fallDistance: Math.max(0, Number(el('fall-distance').value) || 0),
+    minFallHeight: Math.max(0, Number(el('min-fall-height').value) || 0),
   });
-  for (const id of ['max-angle', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance']) {
+  for (const id of ['max-angle', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
     el(id).addEventListener('change', () => onSettingsChange(settings()));
   }
 
