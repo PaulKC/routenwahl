@@ -42,8 +42,7 @@ export function createElevationLayer(map, showStatus) {
     const outlines = new Map();
     for (const tile of tiles) {
       const [w, s, e, n] = tile.bbox;
-      outlines.set(tile.url, L.rectangle([[s, w], [n, e]], { color: '#777', weight: 1, fillOpacity: 0.05 })
-        .bindTooltip(`swissALTI3D ${tile.square} (${tile.year})`)
+      outlines.set(tile.url, L.rectangle([[s, w], [n, e]], { color: '#777', weight: 1, fillOpacity: 0.05, interactive: false })
         .addTo(tileOutlines));
     }
 
