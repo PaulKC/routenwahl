@@ -3,6 +3,9 @@
 // subtracts friction × distance; the energy is capped at the max speed and must never drop
 // below zero. So flat or slightly uphill bits are fine as long as there is enough speed.
 //
+// Cells steeper than maxAngle (terrain slope, not the direction of travel) are off limits;
+// only A itself may be steeper.
+//
 // The "corridor" is every cell on some feasible route from A to B: the most energy a skier
 // can arrive there with is at least the energy needed from there to still reach B.
 
@@ -15,10 +18,11 @@ const EPSILON = 1e-3; // ignore improvements smaller than 1 mm of energy
 export const speedToEnergy = (kmh) => (kmh / 3.6) ** 2 / (2 * G);
 export const energyToSpeed = (energy) => Math.sqrt(2 * G * energy) * 3.6;
 
-export function findDownhillRoutes(grid, start, goal, { friction, maxSpeedKmh }) {
+export function findDownhillRoutes(grid, start, goal, { friction, maxSpeedKmh, maxAngle }) {
   const { width, height, heights, cellSize } = grid;
   const size = width * height;
   const maxEnergy = speedToEnergy(maxSpeedKmh);
+  const slopes = grid.slopes();
   const stepCost = [friction * cellSize, friction * cellSize * Math.SQRT2]; // [straight, diagonal]
 
   const neighbours = (index, visit) => {
@@ -64,6 +68,7 @@ export function findDownhillRoutes(grid, start, goal, { friction, maxSpeedKmh })
     const e = best[cell];
     const h = heights[cell];
     neighbours(cell, (n, diagonal) => {
+      if (!(slopes[n] <= maxAngle)) return; // too steep, or no data
       const arrival = Math.min(maxEnergy, e + h - heights[n] - stepCost[diagonal]);
       if (arrival >= 0 && arrival > best[n] + EPSILON) { // NaN (no data) fails both checks
         best[n] = arrival;
@@ -85,6 +90,7 @@ export function findDownhillRoutes(grid, start, goal, { friction, maxSpeedKmh })
   const base = { mask, reachableCells, corridorCells: 0, path: [] };
   if (Number.isNaN(heights[start]) || Number.isNaN(heights[goal])) return { ...base, reason: 'no-data' };
   if (!(heights[goal] < heights[start])) return { ...base, reason: 'goal-higher' };
+  if (!(slopes[goal] <= maxAngle)) return { ...base, reason: 'goal-steep', goalSlope: slopes[goal] };
   if (best[goal] < 0) return { ...base, reason: 'blocked' };
 
   // 2. Least energy needed at each reachable cell to still make it to B.

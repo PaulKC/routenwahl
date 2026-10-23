@@ -8,8 +8,9 @@ export function createPanel({ onReset, onSettingsChange }) {
   const settings = () => ({
     friction: Math.max(0, Number(el('friction').value) || 0),
     maxSpeedKmh: Math.max(1, Number(el('max-speed').value) || 1),
+    maxAngle: Math.min(90, Math.max(0, Number(el('max-angle').value) || 0)),
   });
-  for (const id of ['friction', 'max-speed']) {
+  for (const id of ['max-angle', 'friction', 'max-speed']) {
     el(id).addEventListener('change', () => onSettingsChange(settings()));
   }
 

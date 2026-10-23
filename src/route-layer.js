@@ -104,6 +104,8 @@ function describe(grid, a, b, result, ms) {
       return 'Route: keine Höhendaten bei A oder B';
     case 'goal-higher':
       return `Route: B (${hB} m) liegt nicht tiefer als A (${hA} m)`;
+    case 'goal-steep':
+      return `Route: B ist ${Math.round(result.goalSlope)}° steil, steiler als die erlaubte Neigung`;
     case 'blocked':
       return `Route: kein fahrbarer Weg von A (${hA} m) nach B (${hB} m). Orange = von A aus erreichbar.`;
     default: {
