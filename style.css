@@ -79,6 +79,10 @@ body,
   background: rgba(46, 125, 50, 0.6);
 }
 
+.swatch.exposed {
+  background: rgba(156, 39, 176, 0.67);
+}
+
 .swatch.reachable {
   background: rgba(255, 152, 0, 0.35);
 }

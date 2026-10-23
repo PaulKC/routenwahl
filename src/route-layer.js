@@ -1,11 +1,14 @@
 // Shows the downhill corridor and an example route on the map.
 import { buildHeightGrid } from './height-grid.js';
 import { findDownhillRoutes, REACHABLE, CORRIDOR } from './downhill.js';
+import { findExposedCells } from './exposure.js';
 import { toLV95 } from './lv95.js';
 
+const EXPOSED = 3; // corridor cell whose fall line runs into a cliff
 const COLORS = {
   [REACHABLE]: [255, 152, 0, 90], // orange: reachable from A, but dead end
   [CORRIDOR]: [46, 125, 50, 150], // green: on some route to B
+  [EXPOSED]: [156, 39, 176, 170], // purple: on some route to B, but exposed
 };
 const MAX_OVERLAY_PX = 2048;
 
@@ -31,6 +34,7 @@ export function createRouteLayer(map, showStatus) {
       return null;
     }
     const result = findDownhillRoutes(grid, a, b, settings);
+    if (!result.reason) markExposure(grid, result, settings);
     const ms = Math.round(performance.now() - t0);
 
     drawMask(grid, result.mask);
@@ -99,6 +103,21 @@ export function createRouteLayer(map, showStatus) {
   return { compute, recompute, clear };
 }
 
+// Marks exposed corridor cells in the mask and measures how much of the route is exposed.
+function markExposure(grid, result, settings) {
+  const { mask, path } = result;
+  const exposed = findExposedCells(grid, (cell) => mask[cell] === CORRIDOR, settings);
+  result.exposedCells = 0;
+  for (let i = 0; i < mask.length; i += 1) {
+    if (exposed[i]) {
+      mask[i] = EXPOSED;
+      result.exposedCells += 1;
+    }
+  }
+  const exposedSteps = path.slice(1).filter((cell) => exposed[cell]).length;
+  result.exposedRouteLength = (result.length * exposedSteps) / Math.max(1, path.length - 1);
+}
+
 function describe(grid, a, b, result, ms) {
   const hA = Math.round(grid.heights[a]);
   const hB = Math.round(grid.heights[b]);
@@ -116,7 +135,10 @@ function describe(grid, a, b, result, ms) {
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
       const speed = Math.round(result.arrivalSpeedKmh);
       const steepest = Math.round(result.maxSlope);
-      return `Route: Korridor ${ha} ha. Sicherste Route: steilste Stelle ${steepest}°, ${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
+      const exposedHa = (result.exposedCells * grid.cellSize ** 2 / 10000).toFixed(1);
+      const exposedRoute = Math.round(result.exposedRouteLength);
+      return `Route: Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route: steilste Stelle ${steepest}°, `
+        + `${km} km (${exposedRoute} m exponiert), ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
     }
   }
 }
