@@ -33,3 +33,52 @@ const map = L.map('map', {
 
 L.control.layers(baseLayers, overlays).addTo(map);
 L.control.scale({ imperial: false }).addTo(map);
+
+// Start and end point: first click sets the start, second the end. Both can be dragged.
+const pinIcon = (kind, label) => L.divIcon({
+  className: '',
+  html: `<span class="pin ${kind}">${label}</span>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
+const points = { start: null, end: null };
+const line = L.polyline([], { color: '#333', weight: 2, dashArray: '6 6' }).addTo(map);
+
+const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
+
+function update() {
+  document.getElementById('start-coords').textContent = points.start ? formatLatLng(points.start.getLatLng()) : '–';
+  document.getElementById('end-coords').textContent = points.end ? formatLatLng(points.end.getLatLng()) : '–';
+  document.getElementById('hint').textContent = !points.start
+    ? 'Klicke auf die Karte, um den Start zu setzen'
+    : !points.end
+      ? 'Klicke auf die Karte, um das Ziel zu setzen'
+      : 'Punkte können verschoben werden';
+  line.setLatLngs(points.start && points.end ? [points.start.getLatLng(), points.end.getLatLng()] : []);
+}
+
+function placePoint(kind, latlng) {
+  const marker = L.marker(latlng, {
+    icon: pinIcon(kind, kind === 'start' ? 'A' : 'B'),
+    draggable: true,
+  }).addTo(map);
+  marker.on('drag', update);
+  points[kind] = marker;
+}
+
+map.on('click', (e) => {
+  if (!points.start) placePoint('start', e.latlng);
+  else if (!points.end) placePoint('end', e.latlng);
+  update();
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  for (const kind of ['start', 'end']) {
+    if (points[kind]) map.removeLayer(points[kind]);
+    points[kind] = null;
+  }
+  update();
+});
+
+update();
