@@ -6,4 +6,15 @@ may follow later.
 
 ## Status
 
-Project setup only. No code yet.
+Minimal map page (Leaflet + swisstopo).
+
+## Run locally
+
+No build step. Serve the folder with any static server, e.g.:
+
+```bash
+python -m http.server 8765
+```
+
+Then open http://localhost:8765. The map uses Leaflet with swisstopo base maps
+(Landeskarte, Winterlandeskarte), OpenTopoMap, and swisstopo's "slope > 30°" overlay.
