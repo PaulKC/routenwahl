@@ -1,0 +1,50 @@
+// Merges downloaded swissALTI3D tiles into one LV95-aligned height grid.
+import { toLV95, fromLV95 } from './lv95.js';
+
+export function buildHeightGrid(tiles) {
+  const cellSize = tiles[0].resolution;
+  const west = Math.min(...tiles.map((t) => t.origin[0]));
+  const north = Math.max(...tiles.map((t) => t.origin[1]));
+  const east = Math.max(...tiles.map((t) => t.origin[0] + t.width * cellSize));
+  const south = Math.min(...tiles.map((t) => t.origin[1] - t.height * cellSize));
+  const width = Math.round((east - west) / cellSize);
+  const height = Math.round((north - south) / cellSize);
+
+  const heights = new Float32Array(width * height).fill(NaN); // NaN = no data
+  for (const tile of tiles) {
+    const col0 = Math.round((tile.origin[0] - west) / cellSize);
+    const row0 = Math.round((north - tile.origin[1]) / cellSize);
+    for (let r = 0; r < tile.height; r += 1) {
+      for (let c = 0; c < tile.width; c += 1) {
+        const h = tile.heights[r * tile.width + c];
+        if (h > -1000) heights[(row0 + r) * width + col0 + c] = h;
+      }
+    }
+  }
+
+  // Cell index for a LV95 coordinate, or -1 outside the grid.
+  const cellAtLV95 = (e, n) => {
+    const col = Math.floor((e - west) / cellSize);
+    const row = Math.floor((north - n) / cellSize);
+    return col >= 0 && col < width && row >= 0 && row < height ? row * width + col : -1;
+  };
+
+  return {
+    width,
+    height,
+    cellSize,
+    heights,
+    cellAtLV95,
+    // Index of the cell containing a WGS84 point, or -1 outside the grid.
+    cellAt(latlng) {
+      const { e, n } = toLV95(latlng);
+      return cellAtLV95(e, n);
+    },
+    // WGS84 position of a cell centre.
+    latLngOf(index) {
+      const col = index % width;
+      const row = Math.floor(index / width);
+      return fromLV95(west + (col + 0.5) * cellSize, north - (row + 0.5) * cellSize);
+    },
+  };
+}

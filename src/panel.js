@@ -18,5 +18,8 @@ export function createPanel({ onReset }) {
     showElevationStatus(text) {
       el('elevation-status').textContent = text;
     },
+    showRouteStatus(text) {
+      el('route-status').textContent = text;
+    },
   };
 }

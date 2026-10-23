@@ -3,6 +3,7 @@ import { MAX_TILES, findElevationTiles, downloadTiles } from './elevation-data.j
 
 const ELEVATION_MARGIN_M = 500;
 
+// load() resolves to the downloaded tiles, or null if it was cancelled or something failed.
 export function createElevationLayer(map, showStatus) {
   const tileOutlines = L.layerGroup().addTo(map);
   let elevationRequest = null;
@@ -30,12 +31,12 @@ export function createElevationLayer(map, showStatus) {
       tiles = await findElevationTiles(bbox, request.signal);
     } catch (err) {
       if (!request.signal.aborted) showStatus(`Höhendaten: Fehler (${err.message})`);
-      return;
+      return null;
     }
-    if (request.signal.aborted) return;
+    if (request.signal.aborted) return null;
     if (tiles.length > MAX_TILES) {
       showStatus(`Höhendaten: ${tiles.length} Kacheln, zu viele (max. ${MAX_TILES}). Punkte näher setzen.`);
-      return;
+      return null;
     }
 
     const outlines = new Map();
@@ -46,6 +47,7 @@ export function createElevationLayer(map, showStatus) {
         .addTo(tileOutlines));
     }
 
+    const loadedTiles = [];
     let loaded = 0;
     let failed = 0;
     let bytes = 0;
@@ -63,6 +65,7 @@ export function createElevationLayer(map, showStatus) {
       if (request.signal.aborted) return;
       if (data) {
         loaded += 1;
+        loadedTiles.push(data);
         bytes += data.bytes;
         min = Math.min(min, data.min);
         max = Math.max(max, data.max);
@@ -74,6 +77,7 @@ export function createElevationLayer(map, showStatus) {
       }
       showProgress();
     });
+    return request.signal.aborted || failed ? null : loadedTiles;
   }
 
   return { load, cancel };

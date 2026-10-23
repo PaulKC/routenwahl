@@ -9,6 +9,8 @@ may follow later.
 Map page (Leaflet + swisstopo). Click to set start (A) and end (B); the app then
 downloads the swissALTI3D 2 m elevation GeoTIFFs covering A–B plus 500 m margin
 from the swisstopo STAC API (data.geo.admin.ch) and outlines them on the map.
+It then finds all strictly downhill routes from A to B on the 2 m grid (green
+corridor, shortest route in blue; orange = downhill from A but no way to B).
 
 ## Run locally
 

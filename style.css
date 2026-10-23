@@ -10,6 +10,7 @@ body,
   bottom: 24px;
   left: 10px;
   z-index: 1000;
+  max-width: min(420px, calc(100vw - 44px));
   display: grid;
   gap: 6px;
   padding: 10px 12px;
@@ -19,8 +20,13 @@ body,
   font: 14px/1.3 system-ui, sans-serif;
 }
 
-#elevation-status:empty {
+#elevation-status:empty,
+#route-status:empty {
   display: none;
+}
+
+.pixelated {
+  image-rendering: pixelated;
 }
 
 #hint {

@@ -52,6 +52,7 @@ async function downloadTile(tile, signal) {
     width: image.getWidth(),
     height: image.getHeight(),
     origin: image.getOrigin(), // LV95 (EPSG:2056) top-left corner
+    resolution: image.getResolution()[0],
     heights,
     min,
     max,
