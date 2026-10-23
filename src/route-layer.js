@@ -1,43 +1,51 @@
-// Shows the downhill corridor and the shortest downhill route on the map.
+// Shows the downhill corridor and an example route on the map.
 import { buildHeightGrid } from './height-grid.js';
 import { findDownhillRoutes, REACHABLE, CORRIDOR } from './downhill.js';
 import { toLV95 } from './lv95.js';
 
 const COLORS = {
-  [REACHABLE]: [255, 152, 0, 90], // orange: downhill from A, but dead end
-  [CORRIDOR]: [46, 125, 50, 150], // green: on some downhill route to B
+  [REACHABLE]: [255, 152, 0, 90], // orange: reachable from A, but dead end
+  [CORRIDOR]: [46, 125, 50, 150], // green: on some route to B
 };
 const MAX_OVERLAY_PX = 2048;
 
 export function createRouteLayer(map, showStatus) {
   const group = L.layerGroup().addTo(map);
+  let last = null; // { tiles, grid, start, end } so settings changes can recompute
 
   function clear() {
+    last = null;
     group.clearLayers();
     showStatus('');
   }
 
-  function compute(tiles, start, end) {
+  function compute(tiles, start, end, settings) {
+    const grid = last?.tiles === tiles ? last.grid : buildHeightGrid(tiles);
     clear();
+    last = { tiles, grid, start, end };
     const t0 = performance.now();
-    const grid = buildHeightGrid(tiles);
     const a = grid.cellAt(start);
     const b = grid.cellAt(end);
     if (a < 0 || b < 0) {
       showStatus('Route: A oder B liegt ausserhalb der Höhendaten');
       return null;
     }
-    const result = findDownhillRoutes(grid, a, b);
+    const result = findDownhillRoutes(grid, a, b, settings);
     const ms = Math.round(performance.now() - t0);
 
     drawMask(grid, result.mask);
     if (result.path.length) {
       L.polyline(result.path.map(grid.latLngOf), { color: '#0d47a1', weight: 3 })
-        .bindTooltip('Kürzeste streng abfallende Route')
+        .bindTooltip('Route mit dem meisten Schwung bei B')
         .addTo(group);
     }
     showStatus(describe(grid, a, b, result, ms));
     return result;
+  }
+
+  // Recomputes the last route with new settings, if there is one.
+  function recompute(settings) {
+    if (last) compute(last.tiles, last.start, last.end, settings);
   }
 
   // Paints the mask into a canvas laid out in WGS84 so it lines up with the map.
@@ -85,7 +93,7 @@ export function createRouteLayer(map, showStatus) {
     L.imageOverlay(canvas.toDataURL(), bounds, { className: 'pixelated' }).addTo(group);
   }
 
-  return { compute, clear };
+  return { compute, recompute, clear };
 }
 
 function describe(grid, a, b, result, ms) {
@@ -97,14 +105,12 @@ function describe(grid, a, b, result, ms) {
     case 'goal-higher':
       return `Route: B (${hB} m) liegt nicht tiefer als A (${hA} m)`;
     case 'blocked':
-      return `Route: kein streng abfallender Weg von A (${hA} m) nach B (${hB} m). Orange = von A aus abwärts erreichbar.`;
+      return `Route: kein fahrbarer Weg von A (${hA} m) nach B (${hB} m). Orange = von A aus erreichbar.`;
     default: {
       const km = (result.length / 1000).toFixed(2);
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
-      const routes = result.log10Routes < 6
-        ? Math.round(10 ** result.log10Routes).toLocaleString('de-CH')
-        : `~10^${Math.floor(result.log10Routes)}`;
-      return `Route: ${routes} mögliche Wege, Korridor ${ha} ha. Kürzester: ${km} km, ${hA - hB} Hm (${ms} ms)`;
+      const speed = Math.round(result.arrivalSpeedKmh);
+      return `Route: Korridor ${ha} ha. Beispiel: ${km} km, ${hA - hB} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
     }
   }
 }

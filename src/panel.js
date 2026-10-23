@@ -1,11 +1,20 @@
 // The info panel in the bottom left corner.
 const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
 
-export function createPanel({ onReset }) {
+export function createPanel({ onReset, onSettingsChange }) {
   const el = (id) => document.getElementById(id);
   el('reset').addEventListener('click', onReset);
 
+  const settings = () => ({
+    friction: Math.max(0, Number(el('friction').value) || 0),
+    maxSpeedKmh: Math.max(1, Number(el('max-speed').value) || 1),
+  });
+  for (const id of ['friction', 'max-speed']) {
+    el(id).addEventListener('change', () => onSettingsChange(settings()));
+  }
+
   return {
+    settings,
     showPoints(start, end) {
       el('start-coords').textContent = start ? formatLatLng(start) : '–';
       el('end-coords').textContent = end ? formatLatLng(end) : '–';

@@ -12,6 +12,7 @@ const panel = createPanel({
     elevation.cancel();
     routes.clear();
   },
+  onSettingsChange: (settings) => routes.recompute(settings),
 });
 
 const elevation = createElevationLayer(map, panel.showElevationStatus);
@@ -23,7 +24,7 @@ async function findRoutes(start, end) {
   // Skip if the points moved again while the tiles were loading.
   const current = picker.latLngs();
   if (!tiles || !current.start?.equals(start) || !current.end?.equals(end)) return;
-  routes.compute(tiles, start, end);
+  routes.compute(tiles, start, end, panel.settings());
 }
 
 const picker = createPointPicker(map, {

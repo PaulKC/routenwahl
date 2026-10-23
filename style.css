@@ -25,6 +25,16 @@ body,
   display: none;
 }
 
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.settings input {
+  width: 4.5em;
+}
+
 .pixelated {
   image-rendering: pixelated;
 }
