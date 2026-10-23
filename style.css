@@ -19,6 +19,10 @@ body,
   font: 14px/1.3 system-ui, sans-serif;
 }
 
+#elevation-status:empty {
+  display: none;
+}
+
 #hint {
   font-weight: 600;
 }
