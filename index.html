@@ -22,6 +22,19 @@
     <div id="route-status"></div>
     <button id="reset" type="button">Zurücksetzen</button>
   </div>
+  <details id="legend" open>
+    <summary>Legende</summary>
+    <ul>
+      <li><span class="pin start">A</span> Start <span class="pin end">B</span> Ziel</li>
+      <li><span class="swatch corridor"></span> Fahrbarer Korridor A → B</li>
+      <li><span class="swatch reachable"></span> Von A erreichbar, aber Sackgasse</li>
+      <li><span class="line route"></span> Beispielroute (meisten Schwung bei B)</li>
+      <li><span class="line straight"></span> Luftlinie A – B</li>
+      <li><span class="swatch tile loading"></span> Höhenkachel lädt</li>
+      <li><span class="swatch tile loaded"></span> Höhenkachel geladen</li>
+      <li><span class="swatch tile failed"></span> Höhenkachel fehlgeschlagen</li>
+    </ul>
+  </details>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
   <script type="module" src="src/main.js"></script>
