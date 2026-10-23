@@ -39,7 +39,7 @@ export function createRouteLayer(map, showStatus) {
       .addTo(group);
     if (result.path.length) {
       L.polyline(result.path.map(grid.latLngOf), { color: '#0d47a1', weight: 3 })
-        .bindTooltip('Route mit dem meisten Schwung bei B')
+        .bindTooltip('Sicherste Route')
         .addTo(group);
     }
     showStatus(describe(grid, a, b, result, ms));
@@ -115,7 +115,8 @@ function describe(grid, a, b, result, ms) {
       const km = (result.length / 1000).toFixed(2);
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
       const speed = Math.round(result.arrivalSpeedKmh);
-      return `Route: Korridor ${ha} ha. Beispiel: ${km} km, ${hA - hB} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
+      const steepest = Math.round(result.maxSlope);
+      return `Route: Korridor ${ha} ha. Sicherste Route: steilste Stelle ${steepest}°, ${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
     }
   }
 }
