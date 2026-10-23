@@ -7,11 +7,10 @@
 //   1. forward from A:  the most energy the skier can arrive with at each cell,
 //   2. backward from B: the least energy needed at each cell to still make it into B's zone.
 // A cell lies on some feasible route ("the corridor") when 1. is at least 2.
-// The example route shown on the map is the safest one (see safest-route.js).
+// The caller picks an example route through it (see safest-route.js).
 import {
   EPSILON, createTerrain, findMaxArrivalEnergy, findMinEnergyNeeded,
 } from './energy-model.js';
-import { findSafestRoute } from './safest-route.js';
 
 export const REACHABLE = 1; // reachable from A, but B can't be reached from here
 export const CORRIDOR = 2; // on at least one feasible route from A to B
@@ -22,9 +21,9 @@ export function findDownhillRoutes(grid, start, goal, settings) {
   const energy = findMaxArrivalEnergy(terrain, start);
   const mask = new Uint8Array(terrain.size);
   const reachableCells = markWhere(mask, REACHABLE, (i) => energy[i] >= 0);
-  const noRoute = { mask, reachableCells, corridorCells: 0, path: [] };
-
   const zone = cellsWithin(grid, goal, settings.goalRadius);
+  const noRoute = { mask, reachableCells, corridorCells: 0, zone };
+
   const problem = checkGoal(terrain, start, goal, zone, energy);
   if (problem) return { ...noRoute, ...problem };
 
@@ -32,8 +31,7 @@ export function findDownhillRoutes(grid, start, goal, settings) {
   const needed = findMinEnergyNeeded(terrain, arrivals, energy);
   const corridorCells = markWhere(mask, CORRIDOR, (i) => energy[i] >= 0 && energy[i] >= needed[i] - EPSILON);
 
-  const route = findSafestRoute(grid, start, zone, settings);
-  return { mask, reachableCells, corridorCells, reason: null, ...route };
+  return { mask, reachableCells, corridorCells, zone, reason: null };
 }
 
 // All cells whose centre lies within radius metres of the centre of `center`.

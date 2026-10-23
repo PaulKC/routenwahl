@@ -16,7 +16,7 @@ terrain slope is steeper than the max angle (default 30°) are excluded. B is a 
 zone (default radius 25 m): arriving anywhere inside it counts.
 Exposed corridor cells are shown in purple: following the fall line from there for
 75 m runs into terrain of 45° or steeper (both adjustable). Green = corridor of
-all feasible routes, blue = safest route (gentlest steepest point, then gentle and short), orange = reachable from
+all feasible routes, blue = safest route (avoids exposed cells if possible, otherwise as little exposure as possible; then gentlest steepest point, then gentle and short), orange = reachable from
 A but no way on to B.
 
 ## Run locally

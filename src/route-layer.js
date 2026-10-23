@@ -2,6 +2,7 @@
 import { buildHeightGrid } from './height-grid.js';
 import { findDownhillRoutes, REACHABLE, CORRIDOR } from './downhill.js';
 import { findExposedCells } from './exposure.js';
+import { findSafestRoute } from './safest-route.js';
 import { toLV95 } from './lv95.js';
 
 const EXPOSED = 3; // corridor cell whose fall line runs into a cliff
@@ -33,8 +34,13 @@ export function createRouteLayer(map, showStatus) {
       showStatus('Route: A oder B liegt ausserhalb der Höhendaten');
       return null;
     }
-    const result = findDownhillRoutes(grid, a, b, settings);
-    if (!result.reason) markExposure(grid, result, settings);
+    const corridor = findDownhillRoutes(grid, a, b, settings);
+    let result = { ...corridor, path: [] };
+    if (!corridor.reason) {
+      const exposed = markExposure(grid, corridor, settings);
+      result = { ...corridor, ...findSafestRoute(grid, a, corridor.zone, settings, exposed) };
+      result.exposedRouteLength = exposedLength(result, exposed);
+    }
     const ms = Math.round(performance.now() - t0);
 
     drawMask(grid, result.mask);
@@ -103,19 +109,24 @@ export function createRouteLayer(map, showStatus) {
   return { compute, recompute, clear };
 }
 
-// Marks exposed corridor cells in the mask and measures how much of the route is exposed.
-function markExposure(grid, result, settings) {
-  const { mask, path } = result;
+// Marks exposed corridor cells in the mask, counts them and returns the exposure mask.
+function markExposure(grid, corridor, settings) {
+  const { mask } = corridor;
   const exposed = findExposedCells(grid, (cell) => mask[cell] === CORRIDOR, settings);
-  result.exposedCells = 0;
+  corridor.exposedCells = 0;
   for (let i = 0; i < mask.length; i += 1) {
     if (exposed[i]) {
       mask[i] = EXPOSED;
-      result.exposedCells += 1;
+      corridor.exposedCells += 1;
     }
   }
+  return exposed;
+}
+
+// Approximate exposed length of the route (its share of exposed steps × total length).
+function exposedLength({ path, length }, exposed) {
   const exposedSteps = path.slice(1).filter((cell) => exposed[cell]).length;
-  result.exposedRouteLength = (result.length * exposedSteps) / Math.max(1, path.length - 1);
+  return (length * exposedSteps) / Math.max(1, path.length - 1);
 }
 
 function describe(grid, a, b, result, ms) {
@@ -136,9 +147,11 @@ function describe(grid, a, b, result, ms) {
       const speed = Math.round(result.arrivalSpeedKmh);
       const steepest = Math.round(result.maxSlope);
       const exposedHa = (result.exposedCells * grid.cellSize ** 2 / 10000).toFixed(1);
-      const exposedRoute = Math.round(result.exposedRouteLength);
-      return `Route: Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route: steilste Stelle ${steepest}°, `
-        + `${km} km (${exposedRoute} m exponiert), ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
+      const exposure = result.avoidsExposure
+        ? 'meidet exponierte Stellen'
+        : `nicht vermeidbar: ${Math.round(result.exposedRouteLength)} m exponiert`;
+      return `Route: Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route (${exposure}): steilste Stelle ${steepest}°, `
+        + `${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
     }
   }
 }
