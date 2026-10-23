@@ -1,14 +1,14 @@
 // swissALTI3D elevation tiles (1 km x 1 km GeoTIFFs, LV95) from the swisstopo STAC API.
 const STAC_ITEMS = 'https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo.swissalti3d/items';
 const RESOLUTION = '2'; // metres per pixel; '0.5' is also available but ~16x larger
-const MAX_TILES = 100;
+export const MAX_TILES = 100;
 const PARALLEL_DOWNLOADS = 6;
 
 // Downloaded tiles, keyed by asset URL, so moving a point only fetches what is new.
 const tileCache = new Map();
 
 // Lists the newest tile for every 1 km square that intersects bbox [west, south, east, north].
-async function findElevationTiles(bbox, signal) {
+export async function findElevationTiles(bbox, signal) {
   const newest = new Map();
   let url = `${STAC_ITEMS}?bbox=${bbox.join(',')}&limit=100`;
   while (url) {
@@ -61,7 +61,7 @@ async function downloadTile(tile, signal) {
 }
 
 // Downloads all tiles with a few requests in flight; onTile(tile, data | null, error) reports each one.
-async function downloadTiles(tiles, signal, onTile) {
+export async function downloadTiles(tiles, signal, onTile) {
   const queue = [...tiles];
   const worker = async () => {
     while (queue.length && !signal.aborted) {
