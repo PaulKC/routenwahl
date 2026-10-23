@@ -9,9 +9,11 @@
 // bits are fine as long as the skier arrives with enough speed. Cells whose terrain is
 // steeper than maxAngle are off limits (only A itself may be steeper).
 //
+// B is a target zone: arriving at any cell within goalRadius metres of B counts.
+//
 // The search runs in two passes over the height grid:
 //   1. forward from A:  the most energy the skier can arrive with at each cell,
-//   2. backward from B: the least energy needed at each cell to still make it to B.
+//   2. backward from B: the least energy needed at each cell to still make it into B's zone.
 // A cell lies on some feasible route ("the corridor") when 1. is at least 2.
 
 export const REACHABLE = 1; // reachable from A, but B can't be reached from here
@@ -32,13 +34,16 @@ export function findDownhillRoutes(grid, start, goal, settings) {
   const reachableCells = markWhere(mask, REACHABLE, (i) => energy[i] >= 0);
   const noRoute = { mask, reachableCells, corridorCells: 0, path: [] };
 
-  const problem = checkGoal(terrain, start, goal, energy);
+  const zone = cellsWithin(grid, goal, settings.goalRadius);
+  const problem = checkGoal(terrain, start, goal, zone, energy);
   if (problem) return { ...noRoute, ...problem };
 
-  const needed = findMinEnergyNeeded(terrain, goal, energy);
+  const arrivals = zone.filter((cell) => energy[cell] >= 0);
+  const needed = findMinEnergyNeeded(terrain, arrivals, energy);
   const corridorCells = markWhere(mask, CORRIDOR, (i) => energy[i] >= 0 && energy[i] >= needed[i] - EPSILON);
 
-  const { path, length } = traceRoute(terrain, previous, goal);
+  const end = closestTo(grid, goal, arrivals);
+  const { path, length } = traceRoute(terrain, previous, end);
   return {
     mask,
     reachableCells,
@@ -46,9 +51,30 @@ export function findDownhillRoutes(grid, start, goal, settings) {
     reason: null,
     path,
     length,
-    descent: terrain.heights[start] - terrain.heights[goal],
-    arrivalSpeedKmh: energyToSpeed(energy[goal]),
+    descent: terrain.heights[start] - terrain.heights[end],
+    arrivalSpeedKmh: energyToSpeed(energy[end]),
   };
+}
+
+// All cells whose centre lies within radius metres of the centre of `center`.
+function cellsWithin(grid, center, radius) {
+  const { width, height, cellSize } = grid;
+  const col = center % width;
+  const row = (center - col) / width;
+  const reach = Math.floor(radius / cellSize);
+  const cells = [];
+  for (let r = Math.max(0, row - reach); r <= Math.min(height - 1, row + reach); r += 1) {
+    for (let c = Math.max(0, col - reach); c <= Math.min(width - 1, col + reach); c += 1) {
+      if (Math.hypot(r - row, c - col) * cellSize <= radius) cells.push(r * width + c);
+    }
+  }
+  return cells;
+}
+
+function closestTo(grid, center, cells) {
+  const { width } = grid;
+  const distance = (cell) => Math.hypot(cell % width - center % width, Math.floor(cell / width) - Math.floor(center / width));
+  return cells.reduce((best, cell) => (distance(cell) < distance(best) ? cell : best));
 }
 
 // Grid plus the rules of the energy model.
@@ -94,7 +120,7 @@ function findMaxArrivalEnergy(terrain, start) {
   const previous = new Int32Array(terrain.size).fill(-1);
 
   energy[start] = 0;
-  relaxUntilStable(terrain.size, start, (cell, update) => {
+  relaxUntilStable(terrain.size, [start], (cell, update) => {
     terrain.forEachNeighbour(cell, (next, diagonal) => {
       if (!terrain.isSkiable(next)) return;
       const arrival = Math.min(maxEnergy, energy[cell] + heights[cell] - heights[next] - frictionLoss[diagonal]);
@@ -108,13 +134,13 @@ function findMaxArrivalEnergy(terrain, start) {
   return { energy, previous };
 }
 
-// Pass 2: the least energy needed at each reachable cell to still make it to B.
-function findMinEnergyNeeded(terrain, goal, arrivalEnergy) {
+// Pass 2: the least energy needed at each reachable cell to still make it into B's zone.
+function findMinEnergyNeeded(terrain, goalCells, arrivalEnergy) {
   const { heights, maxEnergy, frictionLoss } = terrain;
   const needed = new Float32Array(terrain.size).fill(Infinity);
 
-  needed[goal] = 0;
-  relaxUntilStable(terrain.size, goal, (cell, update) => {
+  for (const cell of goalCells) needed[cell] = 0;
+  relaxUntilStable(terrain.size, goalCells, (cell, update) => {
     // Look at the step from each reachable neighbour `from` into `cell`.
     terrain.forEachNeighbour(cell, (from, diagonal) => {
       if (arrivalEnergy[from] < 0) return;
@@ -131,7 +157,7 @@ function findMinEnergyNeeded(terrain, goal, arrivalEnergy) {
 // Label-correcting search: processes cells from a queue, and relax(cell, update) calls
 // update(other) whenever it improved another cell's value, which queues that cell again.
 // Ends when nothing improves any more.
-function relaxUntilStable(size, first, relax) {
+function relaxUntilStable(size, firstCells, relax) {
   const queue = new Int32Array(size); // circular buffer
   const queued = new Uint8Array(size);
   let head = 0;
@@ -144,7 +170,7 @@ function relaxUntilStable(size, first, relax) {
     count += 1;
   };
 
-  update(first);
+  firstCells.forEach(update);
   while (count) {
     const cell = queue[head];
     head = (head + 1) % size;
@@ -154,13 +180,13 @@ function relaxUntilStable(size, first, relax) {
   }
 }
 
-// Why there can't be a route to B, or null if pass 2 is worth running.
-function checkGoal(terrain, start, goal, energy) {
+// Why there can't be a route into B's zone, or null if pass 2 is worth running.
+function checkGoal(terrain, start, goal, zone, energy) {
   const { heights, slopes } = terrain;
   if (Number.isNaN(heights[start]) || Number.isNaN(heights[goal])) return { reason: 'no-data' };
-  if (!(heights[goal] < heights[start])) return { reason: 'goal-higher' };
-  if (!terrain.isSkiable(goal)) return { reason: 'goal-steep', goalSlope: slopes[goal] };
-  if (energy[goal] < 0) return { reason: 'blocked' };
+  if (!zone.some((cell) => heights[cell] < heights[start])) return { reason: 'goal-higher' };
+  if (!zone.some(terrain.isSkiable)) return { reason: 'goal-steep', goalSlope: slopes[goal] };
+  if (!zone.some((cell) => energy[cell] >= 0)) return { reason: 'blocked' };
   return null;
 }
 
@@ -176,7 +202,7 @@ function markWhere(mask, value, test) {
   return count;
 }
 
-// Example route: follow the most-energy predecessors back from B to A.
+// Example route: follow the most-energy predecessors back from the route's end to A.
 function traceRoute(terrain, previous, goal) {
   const { width, stepLength } = terrain;
   const path = [];

@@ -9,8 +9,9 @@ export function createPanel({ onReset, onSettingsChange }) {
     friction: Math.max(0, Number(el('friction').value) || 0),
     maxSpeedKmh: Math.max(1, Number(el('max-speed').value) || 1),
     maxAngle: Math.min(90, Math.max(0, Number(el('max-angle').value) || 0)),
+    goalRadius: Math.max(0, Number(el('goal-radius').value) || 0),
   });
-  for (const id of ['max-angle', 'friction', 'max-speed']) {
+  for (const id of ['max-angle', 'friction', 'max-speed', 'goal-radius']) {
     el(id).addEventListener('change', () => onSettingsChange(settings()));
   }
 

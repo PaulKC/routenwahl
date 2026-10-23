@@ -34,6 +34,9 @@ export function createRouteLayer(map, showStatus) {
     const ms = Math.round(performance.now() - t0);
 
     drawMask(grid, result.mask);
+    L.circle(end, { radius: settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
+      .bindTooltip('Zielbereich um B')
+      .addTo(group);
     if (result.path.length) {
       L.polyline(result.path.map(grid.latLngOf), { color: '#0d47a1', weight: 3 })
         .bindTooltip('Route mit dem meisten Schwung bei B')
@@ -103,11 +106,11 @@ function describe(grid, a, b, result, ms) {
     case 'no-data':
       return 'Route: keine Höhendaten bei A oder B';
     case 'goal-higher':
-      return `Route: B (${hB} m) liegt nicht tiefer als A (${hA} m)`;
+      return `Route: der Zielbereich um B (${hB} m) liegt nicht tiefer als A (${hA} m)`;
     case 'goal-steep':
-      return `Route: B ist ${Math.round(result.goalSlope)}° steil, steiler als die erlaubte Neigung`;
+      return `Route: der ganze Zielbereich um B ist steiler als die erlaubte Neigung (B: ${Math.round(result.goalSlope)}°)`;
     case 'blocked':
-      return `Route: kein fahrbarer Weg von A (${hA} m) nach B (${hB} m). Orange = von A aus erreichbar.`;
+      return `Route: kein fahrbarer Weg von A (${hA} m) in den Zielbereich um B (${hB} m). Orange = von A aus erreichbar.`;
     default: {
       const km = (result.length / 1000).toFixed(2);
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
