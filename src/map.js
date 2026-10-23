@@ -27,13 +27,38 @@ export function createMap(elementId) {
     }),
   };
 
+  const view = loadView();
   const map = L.map(elementId, {
-    center: [46.8, 8.6],
-    zoom: 9,
+    center: view.center,
+    zoom: view.zoom,
     layers: [baseLayers['Winterlandeskarte']],
   });
+  map.on('moveend', () => saveView(map));
 
   L.control.layers(baseLayers, overlays).addTo(map);
   L.control.scale({ imperial: false }).addTo(map);
   return map;
+}
+
+// The last map position and zoom are kept in localStorage so a reload opens at the same spot.
+const VIEW_KEY = 'skitour.mapView';
+const DEFAULT_VIEW = { center: [46.8, 8.6], zoom: 9 };
+
+function loadView() {
+  try {
+    const { lat, lng, zoom } = JSON.parse(localStorage.getItem(VIEW_KEY));
+    if ([lat, lng, zoom].every(Number.isFinite)) return { center: [lat, lng], zoom };
+  } catch {
+    // nothing saved yet, or storage unavailable
+  }
+  return DEFAULT_VIEW;
+}
+
+function saveView(map) {
+  const { lat, lng } = map.getCenter();
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify({ lat, lng, zoom: map.getZoom() }));
+  } catch {
+    // storage unavailable (e.g. private mode); the view just won't be remembered
+  }
 }
