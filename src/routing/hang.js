@@ -11,18 +11,22 @@
 //   3. Each cell of a Hang gets the steepest patch of its Hang. Cells in no Hang keep their own
 //      slope, and no cell is judged gentler than its own slope.
 
-const cache = new WeakMap(); // grid -> { key, slopes }
+const cache = new WeakMap(); // grid -> { key, hangs }
 
-// Slope in degrees to judge each cell by under the whole-slope rule.
-export function hangSlopes(grid, { patchSize, hangAngle, aspectSplit }) {
+// The Hänge of the grid: { slopes, labels, steepest }. slopes is the slope in degrees to judge
+// each cell by under the whole-slope rule, labels the number of each cell's Hang (0 = none)
+// and steepest[n] the steepest patch of Hang n.
+export function findHangs(grid, { patchSize, hangAngle, aspectSplit }) {
   const key = `${patchSize}/${hangAngle}/${aspectSplit}`;
   const cached = cache.get(grid);
-  if (cached?.key === key) return cached.slopes;
+  if (cached?.key === key) return cached.hangs;
   const patches = patchSteepness(grid, patchSize);
-  const slopes = spreadOverHang(grid, patches, hangAngle, aspectSplit);
-  cache.set(grid, { key, slopes });
-  return slopes;
+  const hangs = spreadOverHang(grid, patches, hangAngle, aspectSplit);
+  cache.set(grid, { key, hangs });
+  return hangs;
 }
+
+export const hangSlopes = (grid, settings) => findHangs(grid, settings).slopes;
 
 // Median slope and mean downhill direction (unit vector east/south) of the patch around each cell.
 function patchSteepness(grid, patchSize) {
@@ -73,11 +77,13 @@ function spreadOverHang(grid, { steepness, dirX, dirY }, hangAngle, aspectSplit)
   const { width, height } = grid;
   const own = grid.slopes();
   const result = Float32Array.from(own);
-  const visited = new Uint8Array(width * height);
+  const labels = new Int32Array(width * height); // 0 = not yet in a Hang
+  const steepestOf = [0];
   const minCos = Math.cos((aspectSplit * Math.PI) / 180);
 
   for (let seed = 0; seed < result.length; seed += 1) {
-    if (visited[seed] || !(steepness[seed] >= hangAngle)) continue;
+    if (labels[seed] || !(steepness[seed] >= hangAngle)) continue;
+    const label = steepestOf.length;
     // Flood fill one Hang outwards from the seed (breadth first, so the mean aspect stays that
     // of the cells around the seed instead of drifting along one long arm), keeping the sum
     // of its cells' downhill directions as its mean aspect.
@@ -85,7 +91,7 @@ function spreadOverHang(grid, { steepness, dirX, dirY }, hangAngle, aspectSplit)
     let sumX = 0;
     let sumY = 0;
     let steepest = 0;
-    visited[seed] = 1;
+    labels[seed] = label;
     for (let i = 0; i < members.length; i += 1) {
       const cell = members[i];
       sumX += dirX[cell];
@@ -97,9 +103,9 @@ function spreadOverHang(grid, { steepness, dirX, dirY }, hangAngle, aspectSplit)
       for (let r = Math.max(0, row - 1); r <= Math.min(height - 1, row + 1); r += 1) {
         for (let c = Math.max(0, col - 1); c <= Math.min(width - 1, col + 1); c += 1) {
           const neighbour = r * width + c;
-          if (visited[neighbour] || !(steepness[neighbour] >= hangAngle)) continue;
+          if (labels[neighbour] || !(steepness[neighbour] >= hangAngle)) continue;
           if ((dirX[neighbour] * sumX + dirY[neighbour] * sumY) / meanLength < minCos) continue; // other aspect
-          visited[neighbour] = 1;
+          labels[neighbour] = label;
           members.push(neighbour);
         }
       }
@@ -107,6 +113,7 @@ function spreadOverHang(grid, { steepness, dirX, dirY }, hangAngle, aspectSplit)
     for (const cell of members) {
       if (steepest > result[cell]) result[cell] = steepest;
     }
+    steepestOf.push(steepest);
   }
-  return result;
+  return { slopes: result, labels, steepest: steepestOf };
 }

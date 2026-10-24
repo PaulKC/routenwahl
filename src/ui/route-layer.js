@@ -11,6 +11,13 @@ const COLORS = {
   [EXPOSED]: [156, 39, 176, 170], // purple: on some route to B, but exposed
   [HANG_TOO_STEEP]: [229, 57, 53, 110], // red: rideable by its own slope, but its Hang is too steep
 };
+// Debug view of the Hänge: each Hang in its own colour, picked from its number.
+const hangColor = (label) => {
+  const hue = (label * 137.508) % 360; // golden angle: neighbouring numbers get distant hues
+  const c = (1 - Math.abs(((hue / 60) % 2) - 1)) * 255;
+  const [r, g, b] = [[255, c, 0], [c, 255, 0], [0, 255, c], [0, c, 255], [c, 0, 255], [255, 0, c]][Math.floor(hue / 60)];
+  return [r, g, b, 140];
+};
 const MAX_OVERLAY_PX = 2048;
 const EXACT_EVERY_PX = 16; // overlay pixels between exact projections; the rest is interpolated
 
@@ -23,6 +30,7 @@ export function createRouteLayer(map, showStatus) {
   let workerTiles = null; // tiles the worker already has a height grid for
   let running = null; // id of the calculation in progress, or null
   let nextId = 1;
+  let hoverOff = null; // removes the debug view's hover tooltip
 
   function startWorker() {
     worker = new Worker(new URL('../routing/route-worker.js', import.meta.url), { type: 'module' });
@@ -43,6 +51,8 @@ export function createRouteLayer(map, showStatus) {
     cancel();
     last = null;
     group.clearLayers();
+    hoverOff?.();
+    hoverOff = null;
     showStatus('', null);
   }
 
@@ -80,7 +90,8 @@ export function createRouteLayer(map, showStatus) {
       return;
     }
     const grid = createGridGeometry(geometry);
-    if (result.mask) drawMask(grid, result.mask);
+    if (result.hangLabels) showHangs(grid, result.hangLabels, result.hangSteepest);
+    if (result.mask) drawCells(grid, result.mask, (value) => COLORS[value]);
     L.circle(last.end, { radius: last.settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
       .bindTooltip('Zielbereich um B')
       .addTo(group);
@@ -92,8 +103,29 @@ export function createRouteLayer(map, showStatus) {
     showStatus(describe(grid, result), null);
   }
 
-  // Paints the mask into a canvas laid out in WGS84 so it lines up with the map.
-  function drawMask(grid, mask) {
+  // Debug view: colours each Hang and names it and its steepest patch under the cursor.
+  function showHangs(grid, labels, steepest) {
+    drawCells(grid, labels, hangColor);
+    const tooltip = L.tooltip({ direction: 'right', offset: [12, 0] });
+    const hover = (e) => {
+      const label = labels[grid.cellAt(e.latlng)];
+      if (!label) {
+        tooltip.remove();
+        return;
+      }
+      tooltip.setLatLng(e.latlng).setContent(`Hang ${label}: steilste Partie ${steepest[label].toFixed(1)}°`);
+      if (!map.hasLayer(tooltip)) tooltip.addTo(map);
+    };
+    map.on('mousemove', hover);
+    hoverOff = () => {
+      map.off('mousemove', hover);
+      tooltip.remove();
+    };
+  }
+
+  // Paints the cells into a canvas laid out in WGS84 so it lines up with the map. values has
+  // one entry per cell; 0 is left empty, other values get colorOf(value) as [r, g, b, a].
+  function drawCells(grid, mask, colorOf) {
     let [minRow, maxRow, minCol, maxCol] = [Infinity, -1, Infinity, -1];
     for (let i = 0; i < mask.length; i += 1) {
       if (!mask[i]) continue;
@@ -135,7 +167,7 @@ export function createRouteLayer(map, showStatus) {
         for (let x = x0; x < Math.min(x0 + EXACT_EVERY_PX, w); x += 1) {
           const t = x1 > x0 ? (x - x0) / (x1 - x0) : 0;
           const cell = grid.cellAtProjected(p0.x + t * (p1.x - p0.x), p0.y + t * (p1.y - p0.y));
-          const color = cell >= 0 && COLORS[mask[cell]];
+          const color = cell >= 0 && mask[cell] && colorOf(mask[cell]);
           if (color) image.data.set(color, (y * w + x) * 4);
         }
       }

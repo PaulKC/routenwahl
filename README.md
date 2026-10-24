@@ -57,7 +57,8 @@ From level 3 the steepest part of the whole slope counts, not just the slope on 
 (the reduction method's "steilste Hangpartie"; sources give 10 or 20 m); a Hang is a
 connected area of patches at 30° or steeper whose aspect stays within 60° of the Hang's mean
 aspect; each cell of a Hang is judged by its steepest patch. Cells that only this rule rules
-out are shown in red. The other parameters, including a custom max angle, are under
+out are shown in red. A debug checkbox under "Erweitert" colours each Hang and shows its
+steepest patch under the cursor. The other parameters, including a custom max angle, are under
 "Erweitert".
 
 ## Run locally
