@@ -24,7 +24,7 @@ async function downloadTile(tile, signal) {
   }
   const { buffer, fromStore } = fetched;
   const image = await (await GeoTIFF.fromArrayBuffer(buffer)).getImage();
-  const [heights] = await image.readRasters();
+  const heights = await readHeights(image);
   let min = Infinity;
   let max = -Infinity;
   for (const h of heights) {
@@ -46,6 +46,34 @@ async function downloadTile(tile, signal) {
   };
   tileCache.set(tile.url, data);
   return data;
+}
+
+// Reads the first band as a Float32Array. Kartverket leaves out the internal blocks of a
+// GeoTIFF that are entirely sea (byte count 0), which geotiff.js can't read, so such files
+// are read block by block and the missing blocks become NaN (no data).
+async function readHeights(image) {
+  const byteCounts = image.fileDirectory.TileByteCounts;
+  if (!image.isTiled || byteCounts.every((count) => count > 0)) return (await image.readRasters())[0];
+
+  const width = image.getWidth();
+  const height = image.getHeight();
+  const blockWidth = image.getTileWidth();
+  const blockHeight = image.getTileHeight();
+  const blocksAcross = Math.ceil(width / blockWidth);
+  const decoder = await GeoTIFF.getDecoder(image.fileDirectory);
+  const heights = new Float32Array(width * height).fill(NaN);
+  for (let by = 0; by < Math.ceil(height / blockHeight); by += 1) {
+    for (let bx = 0; bx < blocksAcross; bx += 1) {
+      if (!byteCounts[by * blocksAcross + bx]) continue;
+      const block = new Float32Array((await image.getTileOrStrip(bx, by, 0, decoder)).data);
+      for (let r = 0; r < blockHeight && by * blockHeight + r < height; r += 1) {
+        for (let c = 0; c < blockWidth && bx * blockWidth + c < width; c += 1) {
+          heights[(by * blockHeight + r) * width + bx * blockWidth + c] = block[r * blockWidth + c];
+        }
+      }
+    }
+  }
+  return heights;
 }
 
 // Downloads all tiles with a few requests in flight; onTile(tile, data | null, error) reports each one.

@@ -62,7 +62,7 @@ export function createElevationLayer(map, showStatus) {
     let max = -Infinity;
     const showProgress = () => {
       const mb = (bytes / 1e6).toFixed(1);
-      const range = loaded ? `, ${Math.round(min)}–${Math.round(max)} m ü. M.` : '';
+      const range = min <= max ? `, ${Math.round(min)}–${Math.round(max)} m ü. M.` : '';
       const errors = failed ? `, ${failed} Fehler` : '';
       showStatus(`Höhendaten: ${loaded}/${tiles.length} Kacheln (${mb} MB, ${fromStore} aus dem Cache)${range}${errors}`);
     };
@@ -75,8 +75,10 @@ export function createElevationLayer(map, showStatus) {
         loadedTiles.push(data);
         if (data.fromStore) fromStore += 1;
         bytes += data.bytes;
-        min = Math.min(min, data.min);
-        max = Math.max(max, data.max);
+        if (data.min <= data.max) { // false for a tile that is all sea / no data
+          min = Math.min(min, data.min);
+          max = Math.max(max, data.max);
+        }
         outlines.get(tile.url).setStyle({ color: '#1565c0', fillOpacity: 0.1 });
       } else {
         failed += 1;
