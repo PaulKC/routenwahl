@@ -1,5 +1,6 @@
-// Elevation tiles (1 km x 1 km GeoTIFFs in the region's metric grid) for an area.
+// Elevation tiles (square GeoTIFFs in the region's metric grid) for an area.
 import { fetchTile } from './tile-store.js';
+import { toProjected } from './projection.js';
 
 export const MAX_TILES = 100;
 const PARALLEL_DOWNLOADS = 6;
@@ -11,6 +12,24 @@ const tileCache = new Map();
 export async function findElevationTiles(region, bbox, signal) {
   const tiles = await region.findTiles(bbox, signal);
   return tiles.map((tile) => ({ ...tile, crs: region.crs }));
+}
+
+// Whether `region` has an elevation value at `latlng`. Regions are boxes that overlap at
+// borders; their services return no data outside their own country, so this tells them apart.
+// The tile it loads is the one the route will need anyway.
+export async function hasDataAt(region, latlng, signal) {
+  const d = 0.0002; // ~20 m box around the point
+  const tiles = await findElevationTiles(region, [latlng.lng - d, latlng.lat - d, latlng.lng + d, latlng.lat + d], signal);
+  const { x, y } = toProjected(region.crs, latlng);
+  for (const tile of tiles) {
+    const data = await downloadTile(tile, signal);
+    const col = Math.floor((x - data.origin[0]) / data.resolution);
+    const row = Math.floor((data.origin[1] - y) / data.resolution);
+    if (col < 0 || col >= data.width || row < 0 || row >= data.height) continue;
+    const h = data.heights[row * data.width + col];
+    if (h > -1000 && h < 10000) return true;
+  }
+  return false;
 }
 
 async function downloadTile(tile, signal) {
@@ -39,7 +58,7 @@ async function downloadTile(tile, signal) {
     width: image.getWidth(),
     height: image.getHeight(),
     origin: image.getOrigin(), // top-left corner in the tile's crs
-    resolution: image.getResolution()[0],
+    resolution: Math.abs(image.getResolution()[0]),
     heights,
     min,
     max,

@@ -1,4 +1,4 @@
-// Base map with swisstopo, Kartverket and OpenTopoMap layers.
+// Base map with swisstopo, Kartverket, IGN and OpenTopoMap layers.
 import { regionAt } from '../data/regions.js';
 
 const swisstopo = (layer, format = 'jpeg') =>
@@ -19,6 +19,11 @@ export function createMap(elementId) {
       maxZoom: 18,
       attribution: '&copy; <a href="https://www.kartverket.no/">Kartverket</a>',
     }),
+    'Frankreich Plan IGN': L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+      + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.ign.fr/">IGN</a>',
+    }),
     'OpenTopoMap': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 17,
       attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Style &copy; OpenTopoMap (CC-BY-SA)',
@@ -35,7 +40,8 @@ export function createMap(elementId) {
 
   // The national maps only cover their own country, so pick the one for where the map is.
   const baseLayerFor = (latlng) => baseLayers[regionAt(latlng)?.baseLayer ?? 'OpenTopoMap'];
-  const regionalLayers = new Set([baseLayers['Landeskarte'], baseLayers['Winterlandeskarte'], baseLayers['Norwegen Topo']]);
+  const regionalLayers = new Set(['Landeskarte', 'Winterlandeskarte', 'Norwegen Topo', 'Frankreich Plan IGN']
+    .map((name) => baseLayers[name]));
 
   const view = loadView();
   let baseLayer = baseLayerFor(L.latLng(view.center));
@@ -44,14 +50,23 @@ export function createMap(elementId) {
     zoom: view.zoom,
     layers: [baseLayer],
   });
-  map.on('baselayerchange', (e) => { baseLayer = e.layer; });
+  let userPicked = false; // set once the user chooses a base map in the layer switcher
+  let switching = false; // Leaflet also fires baselayerchange for our own switches
+  map.on('baselayerchange', (e) => {
+    baseLayer = e.layer;
+    if (!switching) userPicked = true;
+  });
   map.on('moveend', () => {
     saveView(map);
-    // Leave a national map that doesn't cover the view; other choices are the user's.
+    // Follow the region in view until the user picks a map; even then, leave a national map
+    // that doesn't cover the view.
     const preferred = baseLayerFor(map.getCenter());
-    if (regionalLayers.has(baseLayer) && preferred !== baseLayer && !sameRegion(baseLayers, baseLayer, preferred)) {
+    const follow = !userPicked || regionalLayers.has(baseLayer);
+    if (follow && preferred !== baseLayer && !sameRegion(baseLayers, baseLayer, preferred)) {
+      switching = true;
       map.removeLayer(baseLayer);
       map.addLayer(preferred);
+      switching = false;
       baseLayer = preferred;
     }
   });

@@ -13,7 +13,17 @@ Supported regions (src/data/regions.js), each in its own metric grid via proj4:
   swisstopo maps.
 - Norway: Kartverket's national DTM through its WCS (wcs.geonorge.no), cut into
   1 km squares of UTM 33N (EPSG:25833), Kartverket topo map.
-The base map switches to the national map of the region in view.
+- France: IGN RGE ALTI through the Géoplateforme raw-data WMS (data.geopf.fr/wms-r),
+  Lambert-93 (EPSG:2154), IGN Plan map.
+- Austria, Tirol only: Land Tirol's 50 cm laser-scan DTM through its WCS
+  (gis.tirol.gv.at), Gauss-Krüger M28 / M31 for North / East Tirol.
+- Italy: TINITALY 1.1 from INGV through its WCS (tinitaly.pi.ingv.it), UTM 32N,
+  only 10 m, so slopes come out flatter and small cliffs are missed.
+- Germany is missing: Bavaria's DGM1 downloads don't allow browser access (no CORS),
+  so it would need a small proxy server.
+Regions overlap at borders; the route uses the first region (finest data first) that
+has data at both A and B. The base map follows the region in view until the user
+picks one.
 It then finds every route from A to B on the 2 m grid that a skier can ride while
 carrying speed: speed is tracked as energy (v^2/2g), gained by losing height, lost to
 friction, capped at a max speed (default friction 0.07, 20 km/h). Snow presets set the

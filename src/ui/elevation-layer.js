@@ -1,6 +1,6 @@
 // Elevation tiles covering the A–B bounding box plus a margin, outlined on the map.
-import { MAX_TILES, findElevationTiles, downloadTiles } from '../data/elevation-data.js';
-import { REGIONS, regionAt } from '../data/regions.js';
+import { MAX_TILES, findElevationTiles, downloadTiles, hasDataAt } from '../data/elevation-data.js';
+import { REGIONS, regionsAt } from '../data/regions.js';
 
 const ELEVATION_MARGIN_M = 1500; // routes that avoid steep terrain often detour outside the A–B box
 
@@ -26,8 +26,16 @@ export function createElevationLayer(map, showStatus) {
     const dLng = ELEVATION_MARGIN_M / (111320 * Math.cos(bounds.getCenter().lat * Math.PI / 180));
     const bbox = [bounds.getWest() - dLng, bounds.getSouth() - dLat, bounds.getEast() + dLng, bounds.getNorth() + dLat];
 
-    const region = regionAt(start);
-    if (!region || regionAt(end) !== region) {
+    showStatus('Höhendaten: suche Datenquelle…');
+    let region;
+    try {
+      region = await findRegion(start, end, request.signal);
+    } catch (err) {
+      if (!request.signal.aborted) showStatus(`Höhendaten: Fehler (${err.message})`);
+      return null;
+    }
+    if (request.signal.aborted) return null;
+    if (!region) {
       const names = REGIONS.map((r) => r.name).join(', ');
       showStatus(`Höhendaten: A und B müssen im selben unterstützten Gebiet liegen (${names})`);
       return null;
@@ -64,7 +72,8 @@ export function createElevationLayer(map, showStatus) {
       const mb = (bytes / 1e6).toFixed(1);
       const range = min <= max ? `, ${Math.round(min)}–${Math.round(max)} m ü. M.` : '';
       const errors = failed ? `, ${failed} Fehler` : '';
-      showStatus(`Höhendaten: ${loaded}/${tiles.length} Kacheln (${mb} MB, ${fromStore} aus dem Cache)${range}${errors}`);
+      const coarse = region.coarse ? '. Nur 10 m Auflösung: Neigung und Absturzgelände werden unterschätzt' : '';
+      showStatus(`Höhendaten (${region.name}${coarse}): ${loaded}/${tiles.length} Kacheln (${mb} MB, ${fromStore} aus dem Cache)${range}${errors}`);
     };
     showProgress();
 
@@ -88,6 +97,20 @@ export function createElevationLayer(map, showStatus) {
       showProgress();
     });
     return request.signal.aborted || failed ? null : loadedTiles;
+  }
+
+  // The first region (in order of preference) that has data at both A and B.
+  async function findRegion(start, end, signal) {
+    const atEnd = regionsAt(end);
+    for (const region of regionsAt(start).filter((r) => atEnd.includes(r))) {
+      try {
+        if (await hasDataAt(region, start, signal) && await hasDataAt(region, end, signal)) return region;
+      } catch (err) {
+        if (signal.aborted) throw err;
+        console.warn(`${region.name}: ${err.message}`); // service down: try the next region
+      }
+    }
+    return null;
   }
 
   return { load, cancel };
