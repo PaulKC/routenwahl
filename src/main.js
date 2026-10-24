@@ -1,8 +1,8 @@
-import { createMap } from './map.js';
-import { createPointPicker } from './points.js';
-import { createPanel } from './panel.js';
-import { createElevationLayer } from './elevation-layer.js';
-import { createRouteLayer } from './route-layer.js';
+import { createMap } from './ui/map.js';
+import { createPointPicker } from './ui/points.js';
+import { createPanel } from './ui/panel.js';
+import { createElevationLayer } from './ui/elevation-layer.js';
+import { createRouteLayer } from './ui/route-layer.js';
 
 const map = createMap('map');
 

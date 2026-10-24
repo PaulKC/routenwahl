@@ -1,5 +1,5 @@
 // The info panel in the bottom left corner.
-import { countStoredTiles, clearStoredTiles } from './tile-store.js';
+import { countStoredTiles, clearStoredTiles } from '../data/tile-store.js';
 
 const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
 

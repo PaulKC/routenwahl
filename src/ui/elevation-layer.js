@@ -1,5 +1,5 @@
 // Elevation tiles covering the A–B bounding box plus a margin, outlined on the map.
-import { MAX_TILES, findElevationTiles, downloadTiles } from './elevation-data.js';
+import { MAX_TILES, findElevationTiles, downloadTiles } from '../data/elevation-data.js';
 
 const ELEVATION_MARGIN_M = 1500; // routes that avoid steep terrain often detour outside the A–B box
 

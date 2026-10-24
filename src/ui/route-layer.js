@@ -1,9 +1,9 @@
 // Shows the downhill corridor and an example route on the map.
-import { buildHeightGrid } from './height-grid.js';
-import { findDownhillRoutes, REACHABLE, CORRIDOR } from './downhill.js';
-import { findExposedCells } from './exposure.js';
-import { findSafestRoute } from './safest-route.js';
-import { toLV95 } from './lv95.js';
+import { buildHeightGrid } from '../data/height-grid.js';
+import { findDownhillRoutes, REACHABLE, CORRIDOR } from '../routing/downhill.js';
+import { findExposedCells } from '../routing/exposure.js';
+import { findSafestRoute } from '../routing/safest-route.js';
+import { toLV95 } from '../data/lv95.js';
 
 const EXPOSED = 3; // corridor cell whose fall line runs into a cliff
 const COLORS = {
