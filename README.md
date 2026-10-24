@@ -46,8 +46,8 @@ A but no way on to B.
 
 The panel's main setting is the avalanche danger level, which sets the max slope angle
 (src/ui/danger.js): the SLF's graphical reduction method (1 gering 45°, i.e. no limit there,
-so the cliff angle; 2 mässig 40°; 3 erheblich 35°; 4 gross 30°) with a 4° margin, so 1 → 41°,
-2 → 36°, 3 → 31°, 4 → 26°, 5 sehr gross → 21° with a warning that the SLF advises against
+so the cliff angle; 2 mässig 40°; 3 erheblich 35°; 4 gross 30°) with a 5° margin, so 1 → 40°,
+2 → 35°, 3 → 30°, 4 → 25°, 5 sehr gross → 20° with a warning that the SLF advises against
 tours. By default the level comes from
 the current SLF bulletin (aws.slf.ch, GeoJSON, CC BY 4.0) for A and B, or the map centre before
 they are set; of several ratings (by elevation or time of day) and of A and B the highest
