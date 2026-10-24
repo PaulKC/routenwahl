@@ -28,7 +28,7 @@ OpenStreetMap geocoder; from 3 letters, after a 300 ms pause). The top-right cor
 the base-map picker and legend as cards that open and close on a click.
 It then finds every route from A to B on the 2 m grid that a skier can ride while
 carrying speed: speed is tracked as energy (v^2/2g), gained by losing height, lost to
-friction, capped at a max speed (default friction 0.07, 20 km/h). Snow presets set the
+friction, capped at a max speed (default friction 0.07, 40 km/h). Snow presets set the
 friction (hard/frozen spring snow 0.03, typical 0.07, wet new snow 0.14; measured values from
 Wolfsperger, Meyer & Gilgien 2021, doi:10.3389/fmech.2021.728722) and the panel shows the
 minimum gliding slope atan(friction). Cells whose
