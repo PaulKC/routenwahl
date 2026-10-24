@@ -29,34 +29,65 @@ export function findHangs(grid, { patchSize, hangAngle, aspectSplit }) {
 export const hangSlopes = (grid, settings) => findHangs(grid, settings).slopes;
 
 // Median slope and mean downhill direction (unit vector east/south) of the patch around each cell.
+// The median comes from a histogram of the window's slopes in 0.1° bins that slides along each
+// row: moving one cell on adds the column entering the window and removes the one leaving it,
+// so the cost grows with the window's width rather than its area (Huang's running median).
+const BINS_PER_DEGREE = 10;
+
 function patchSteepness(grid, patchSize) {
   const { width, height, cellSize } = grid;
   const slopes = grid.slopes();
   const { dzdx, dzdy } = grid.gradients();
   const half = Math.floor(Math.max(1, Math.round(patchSize / cellSize)) / 2);
+  const fullWindow = (2 * half + 1) ** 2;
   const steepness = new Float32Array(width * height).fill(NaN);
   const dirX = new Float32Array(width * height);
   const dirY = new Float32Array(width * height);
-  const window = new Float32Array((2 * half + 1) ** 2);
+  const bin = new Int16Array(width * height).fill(-1); // -1 = no data
+  for (let i = 0; i < bin.length; i += 1) {
+    if (!Number.isNaN(slopes[i])) bin[i] = Math.min(90 * BINS_PER_DEGREE, Math.round(slopes[i] * BINS_PER_DEGREE));
+  }
+  const histogram = new Int32Array(90 * BINS_PER_DEGREE + 1);
 
   for (let row = 0; row < height; row += 1) {
-    for (let col = 0; col < width; col += 1) {
-      let n = 0;
-      let gx = 0;
-      let gy = 0;
-      for (let r = Math.max(0, row - half); r <= Math.min(height - 1, row + half); r += 1) {
-        for (let c = Math.max(0, col - half); c <= Math.min(width - 1, col + half); c += 1) {
-          const i = r * width + c;
-          if (Number.isNaN(slopes[i])) continue;
-          window[n] = slopes[i];
-          n += 1;
-          gx += dzdx[i];
-          gy += dzdy[i];
-        }
+    const top = Math.max(0, row - half);
+    const bottom = Math.min(height - 1, row + half);
+    histogram.fill(0);
+    let n = 0;
+    let gx = 0;
+    let gy = 0;
+    let median = 0; // bin of the median
+    let below = 0; // values in bins under `median`
+    // Adds (sign 1) or removes (sign -1) one column of the window.
+    const addColumn = (col, sign) => {
+      for (let r = top; r <= bottom; r += 1) {
+        const i = r * width + col;
+        const b = bin[i];
+        if (b < 0) continue;
+        histogram[b] += sign;
+        n += sign;
+        if (b < median) below += sign;
+        gx += sign * dzdx[i];
+        gy += sign * dzdy[i];
       }
-      if (n * 2 < window.length) continue; // mostly no data
+    };
+    for (let col = 0; col < Math.min(half, width); col += 1) addColumn(col, 1);
+    for (let col = 0; col < width; col += 1) {
+      if (col + half < width) addColumn(col + half, 1);
+      if (col - half - 1 >= 0) addColumn(col - half - 1, -1);
+      if (n * 2 < fullWindow) continue; // mostly no data
+      // Move to the bin holding the lower middle value.
+      const k = (n - 1) >> 1;
+      while (below > k) {
+        median -= 1;
+        below -= histogram[median];
+      }
+      while (below + histogram[median] <= k) {
+        below += histogram[median];
+        median += 1;
+      }
       const cell = row * width + col;
-      steepness[cell] = median(window, n);
+      steepness[cell] = median / BINS_PER_DEGREE;
       const length = Math.hypot(gx, gy);
       if (length > 0) {
         dirX[cell] = -gx / length;
@@ -65,12 +96,6 @@ function patchSteepness(grid, patchSize) {
     }
   }
   return { steepness, dirX, dirY };
-}
-
-// Middle value of the first n entries (sorts them in place).
-function median(values, n) {
-  const part = values.subarray(0, n).sort();
-  return n % 2 ? part[(n - 1) / 2] : (part[n / 2 - 1] + part[n / 2]) / 2;
 }
 
 function spreadOverHang(grid, { steepness, dirX, dirY }, hangAngle, aspectSplit) {
