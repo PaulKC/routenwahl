@@ -58,31 +58,40 @@
       <summary>Erweitert</summary>
       <div id="elevation-details"></div>
       <div id="route-details"></div>
-      <div class="settings">
+      <fieldset class="settings">
+        <legend title="Diese Werte setzen die Knöpfe oben; ein eigener Wert ersetzt sie">Von Lawinengefahr und Schnee gesetzt</legend>
         <label title="Wird von der Lawinengefahr gesetzt; ein eigener Wert ersetzt sie">Max. Neigung <input id="max-angle" type="number" min="0" max="90" step="0.5" value="30">°</label>
-        <div class="hang-row" title="Reduktionsmethode: ab Stufe 3 zählt die steilste Partie des ganzen Hangs, nicht nur die Neigung in der Spur">
-          <label><input id="whole-slope" type="checkbox"> Ganzer Hang zählt</label>
-          <label title="Grösse der steilsten Hangpartie; sie zählt, wenn der grössere Teil davon so steil ist">Hangpartie <input id="patch-size" type="number" min="2" max="50" step="2" value="10"> m</label>
-          <label title="Gelände ab dieser Neigung gehört zu einem Hang; flacheres trennt Hänge">Hang ab <input id="hang-angle" type="number" min="0" max="60" step="1" value="30">°</label>
-          <label title="Steileres Gelände ist Fels, gehört zu keinem Hang und trennt Hänge">Fels ab <input id="rock-angle" type="number" min="0" max="90" step="1" value="55">°</label>
-          <label title="Ändert sich die Exposition zwischen Nachbarzellen um mehr als so viel (Rippe, Rinne), endet der Hang">Rippe / Rinne ab <input id="rib-angle" type="number" min="0" max="180" step="5" value="30">°</label>
-          <label title="Weicht die Exposition mehr als so viel vom Hang ab, beginnt ein neuer Hang">Expositionswechsel <input id="aspect-split" type="number" min="0" max="180" step="5" value="60">°</label>
-          <label title="Färbt jeden erkannten Hang; die Maus über einem Hang zeigt seine steilste Partie">
-            <input id="show-hangs" type="checkbox"> Debug: Hänge anzeigen</label>
-          <label title="Zeigt die Umrisse der Höhendaten-Kacheln auf der Karte und in der Legende">
-            <input id="show-tiles" type="checkbox"> Debug: Höhenkacheln anzeigen</label>
-        </div>
+        <label title="Reduktionsmethode: ab Stufe 3 zählt die steilste Partie des ganzen Hangs, nicht nur die Neigung in der Spur"><input id="whole-slope" type="checkbox"> Ganzer Hang zählt</label>
         <div class="friction-row" title="Gemessene Ski-Schnee-Reibung: Wolfsperger, Meyer &amp; Gilgien 2021, Frontiers in Mechanical Engineering, doi:10.3389/fmech.2021.728722">
           <label>Reibung <input id="friction" type="number" min="0" max="1" step="0.01" value="0.07"></label>
           <span>Gleiten ab <span id="glide-angle">4.0</span>°</span>
           <small class="source">Reibung gemessen: Wolfsperger, Meyer &amp; Gilgien 2021, <a href="https://doi.org/10.3389/fmech.2021.728722" target="_blank" rel="noopener">doi:10.3389/fmech.2021.728722</a></small>
         </div>
+      </fieldset>
+      <fieldset class="settings" title="Wie Hänge abgegrenzt werden, wenn der ganze Hang zählt">
+        <legend>Hang</legend>
+        <label title="Grösse der steilsten Hangpartie; sie zählt, wenn der grössere Teil davon so steil ist">Hangpartie <input id="patch-size" type="number" min="2" max="50" step="2" value="10"> m</label>
+        <label title="Gelände ab dieser Neigung gehört zu einem Hang; flacheres trennt Hänge">Hang ab <input id="hang-angle" type="number" min="0" max="60" step="1" value="30">°</label>
+        <label title="Steileres Gelände ist Fels, gehört zu keinem Hang und trennt Hänge">Fels ab <input id="rock-angle" type="number" min="0" max="90" step="1" value="55">°</label>
+        <label title="Ändert sich die Exposition zwischen Nachbarzellen um mehr als so viel (Rippe, Rinne), endet der Hang">Rippe / Rinne ab <input id="rib-angle" type="number" min="0" max="180" step="5" value="30">°</label>
+        <label title="Weicht die Exposition mehr als so viel vom Hang ab, beginnt ein neuer Hang">Expositionswechsel <input id="aspect-split" type="number" min="0" max="180" step="5" value="60">°</label>
+      </fieldset>
+      <fieldset class="settings">
+        <legend>Route und Absturz</legend>
         <label>Max. Tempo <input id="max-speed" type="number" min="1" max="120" step="1" value="40"> km/h</label>
         <label title="Die Route darf irgendwo in diesem Umkreis um Start und Ziel beginnen und enden">Radius Start / Ziel <input id="goal-radius" type="number" min="0" max="500" step="5" value="25"> m</label>
         <label>Absturz ab <input id="cliff-angle" type="number" min="0" max="90" step="1" value="45">°</label>
         <label>Sturzweg <input id="fall-distance" type="number" min="0" max="500" step="10" value="75"> m</label>
         <label>Absturzhöhe ab <input id="min-fall-height" type="number" min="0" max="500" step="1" value="10"> m</label>
-      </div>
+      </fieldset>
+      <!-- Only shown with ?debug in the address (see main.js). -->
+      <fieldset class="settings debug-only">
+        <legend>Debug</legend>
+        <label title="Färbt jeden erkannten Hang; die Maus über einem Hang zeigt seine steilste Partie">
+          <input id="show-hangs" type="checkbox"> Hänge anzeigen</label>
+        <label title="Zeigt die Umrisse der Höhendaten-Kacheln auf der Karte und in der Legende">
+          <input id="show-tiles" type="checkbox"> Höhenkacheln anzeigen</label>
+      </fieldset>
       <button id="clear-cache" type="button">Höhendaten-Cache leeren</button>
     </details>
     <button id="reset" type="button">Zurücksetzen</button>

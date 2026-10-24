@@ -8,7 +8,7 @@ may follow later.
 
 Map page (Leaflet). Click to set start (A) and end (B); the app then downloads 2 m
 elevation GeoTIFFs covering A–B plus 1.5 km margin (their outlines show with the
-"Debug: Höhenkacheln anzeigen" option).
+"Höhenkacheln anzeigen" debug option).
 Supported regions (src/data/regions.js), each in its own metric grid via proj4:
 - Switzerland: swissALTI3D from the swisstopo STAC API (data.geo.admin.ch), LV95,
   swisstopo maps.
@@ -66,9 +66,12 @@ From level 3 the steepest part of the whole slope counts, not just the slope on 
 connected area of patches from 30° up to 55° (steeper is rock, which separates Hänge) whose
 aspect changes by less than 30° between neighbours (ribs and gullies end a Hang) and stays
 within 60° of the Hang's mean aspect; each cell of a Hang is judged by its steepest patch. Cells that only this rule rules
-out are shown in red. A debug checkbox under "Erweitert" colours each Hang and shows its
+out are shown in red. A debug option colours each Hang and shows its
 steepest patch under the cursor. The other parameters, including a custom max angle, are under
-"Erweitert".
+"Erweitert", grouped into what the danger and snow buttons set (max angle, whole-slope rule,
+friction; a value typed there overrides the buttons), how Hänge are found, and route and fall
+settings. The debug options (Hänge, elevation tile outlines) only show when the address ends
+in `?debug`, e.g. `index.html?debug`.
 
 ## Install as an app (PWA)
 

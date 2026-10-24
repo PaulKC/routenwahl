@@ -5,6 +5,9 @@ import { createElevationLayer } from './ui/elevation-layer.js';
 import { createRouteLayer } from './ui/route-layer.js';
 import { createSearch } from './ui/search.js';
 
+// ?debug in the address shows the debug options under "Erweitert".
+document.body.classList.toggle('debug', new URLSearchParams(location.search).has('debug'));
+
 const map = createMap('map');
 createSearch(map);
 
