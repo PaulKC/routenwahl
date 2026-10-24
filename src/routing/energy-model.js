@@ -55,14 +55,19 @@ export function createTerrain(grid, settings) {
   };
 }
 
-// Pass 1: the most energy the skier can have on arrival at each cell, starting at A standing
-// still.
-export function findMaxArrivalEnergy(terrain, start) {
+// The cells of A's zone the skier may set off from: A itself always, the others if skiable.
+// `starts` lists A first.
+export const startCells = (terrain, starts) => starts.filter((cell, i) => i === 0 || terrain.isSkiable(cell));
+
+// Pass 1: the most energy the skier can have on arrival at each cell, setting off standing
+// still anywhere in A's zone.
+export function findMaxArrivalEnergy(terrain, starts) {
   const { heights, maxEnergy, frictionLoss } = terrain;
   const energy = new Float32Array(terrain.size).fill(UNREACHABLE);
 
-  energy[start] = 0;
-  relaxUntilStable(terrain.size, [start], (cell, update) => {
+  const first = startCells(terrain, starts);
+  for (const cell of first) energy[cell] = 0;
+  relaxUntilStable(terrain.size, first, (cell, update) => {
     terrain.forEachNeighbour(cell, (next, diagonal) => {
       if (!terrain.isSkiable(next)) return;
       const arrival = Math.min(maxEnergy, energy[cell] + heights[cell] - heights[next] - frictionLoss[diagonal]);

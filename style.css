@@ -376,12 +376,20 @@ details.map-card > :not(summary) {
   background: rgba(198, 40, 40, 0.2);
 }
 
-.ring.goal {
+.ring {
   width: 12px;
   height: 12px;
   margin: 0 3px;
-  border: 2px dashed #c62828;
+  border: 2px dashed;
   border-radius: 50%;
+}
+
+.ring.start {
+  border-color: #2e7d32;
+}
+
+.ring.goal {
+  border-color: #c62828;
 }
 
 .line {

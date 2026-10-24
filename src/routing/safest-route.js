@@ -6,7 +6,7 @@
 //   2. among the routes under that limit, it prefers gentle terrain over steep and short
 //      over long.
 import {
-  EPSILON, energyToSpeed, createTerrain, findMaxArrivalEnergy, findMinEnergyNeeded,
+  EPSILON, energyToSpeed, createTerrain, startCells, findMaxArrivalEnergy, findMinEnergyNeeded,
 } from './energy-model.js';
 import { createMinHeap } from './min-heap.js';
 
@@ -17,11 +17,11 @@ const EXPOSURE_PENALTY = 1000; // an exposed step costs like 1 km of flat terrai
 // Number of rounds the angle search takes for a given angle limit.
 export const angleSearchRounds = (maxAngle) => Math.max(0, Math.ceil(Math.log2(maxAngle / SAFEST_ANGLE_PRECISION)));
 
-// `exposed` is a mask of cells to stay out of (or null). onStep(label) is called before each
+// `starts` lists A's zone, A first. `exposed` is a mask of cells to stay out of (or null). onStep(label) is called before each
 // step: the exposure check, every angle search round and the final path search.
-export function findSafestRoute(grid, start, zone, settings, exposed, onStep = () => {}) {
+export function findSafestRoute(grid, starts, zone, settings, exposed, onStep = () => {}) {
   const reachesZone = (angle, blocked) => {
-    const energy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, maxAngle: angle, blocked }), start);
+    const energy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, maxAngle: angle, blocked }), starts);
     return zone.some((cell) => energy[cell] >= 0);
   };
   onStep('Sicherste Route: exponierte Stellen umgehbar?');
@@ -41,11 +41,11 @@ export function findSafestRoute(grid, start, zone, settings, exposed, onStep = (
 
   onStep('Sicherste Route: Wegsuche');
   const terrain = createTerrain(grid, { ...settings, maxAngle: feasible, blocked });
-  const energy = findMaxArrivalEnergy(terrain, start);
+  const energy = findMaxArrivalEnergy(terrain, starts);
   const arrivals = zone.filter((cell) => energy[cell] >= 0);
   const needed = findMinEnergyNeeded(terrain, arrivals, energy);
   const penalised = avoidsExposure ? null : exposed;
-  const { path, energyAtEnd } = findGentlestPath(terrain, start, arrivals, needed, feasible, penalised);
+  const { path, energyAtEnd } = findGentlestPath(terrain, starts, arrivals, needed, feasible, penalised);
 
   const { width, slopes, limitSlopes, heights, stepLength } = terrain;
   let length = 0;
@@ -59,18 +59,18 @@ export function findSafestRoute(grid, start, zone, settings, exposed, onStep = (
     length,
     maxSlope: Math.max(...path.slice(1).map((cell) => slopes[cell])),
     maxHangSlope: settings.wholeSlope ? Math.max(...path.slice(1).map((cell) => limitSlopes[cell])) : null,
-    descent: heights[start] - heights[end],
+    descent: heights[path[0]] - heights[end],
     arrivalSpeedKmh: energyToSpeed(energyAtEnd),
     avoidsExposure,
   };
 }
 
-// Dijkstra from A where a step costs its length × (1 + penalty × (slope / angleLimit)²),
+// Dijkstra from A's zone where a step costs its length × (1 + penalty × (slope / angleLimit)²),
 // plus a large extra cost for cells in the optional `penalised` mask.
 // The skier's energy is carried along the path, and a step is only taken if the energy left
 // is at least what that cell needs to still reach B (from pass 2), so the result is always
 // rideable. Stops at the first cell of B's zone it settles.
-function findGentlestPath(terrain, start, goalCells, needed, angleLimit, penalised) {
+function findGentlestPath(terrain, starts, goalCells, needed, angleLimit, penalised) {
   const { size, heights, limitSlopes, maxEnergy, frictionLoss, stepLength } = terrain;
   const isGoal = new Uint8Array(size);
   for (const cell of goalCells) isGoal[cell] = 1;
@@ -80,8 +80,10 @@ function findGentlestPath(terrain, start, goalCells, needed, angleLimit, penalis
   const done = new Uint8Array(size);
   const queue = createMinHeap();
 
-  cost[start] = 0;
-  queue.push(0, start);
+  for (const cell of startCells(terrain, starts)) {
+    cost[cell] = 0;
+    queue.push(0, cell);
+  }
   while (queue.size()) {
     const cell = queue.pop();
     if (done[cell]) continue;
@@ -103,7 +105,7 @@ function findGentlestPath(terrain, start, goalCells, needed, angleLimit, penalis
       }
     });
   }
-  return { path: [start], energyAtEnd: 0 }; // not reached: pass 2 guarantees a way on
+  return { path: [starts[0]], energyAtEnd: 0 }; // not reached: pass 2 guarantees a way on
 }
 
 function tracePath(previous, end) {

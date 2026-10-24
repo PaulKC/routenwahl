@@ -1,7 +1,8 @@
 // Finds every route from A to B that a skier can ride while carrying speed (see
 // energy-model.js for how speed, friction and the angle limit work).
 //
-// B is a target zone: arriving at any cell within goalRadius metres of B counts.
+// A and B are zones: setting off from any cell within goalRadius metres of A, and arriving at
+// any cell within goalRadius metres of B, counts. `starts` lists A's zone, A first.
 //
 // The search runs in two passes over the height grid:
 //   1. forward from A:  the most energy the skier can arrive with at each cell,
@@ -16,19 +17,19 @@ export const REACHABLE = 1; // reachable from A, but B can't be reached from her
 export const CORRIDOR = 2; // on at least one feasible route from A to B
 export const HANG_TOO_STEEP = 4; // reachable by its own slope, but its Hang is too steep
 
-export function findDownhillRoutes(grid, start, goal, settings) {
+export function findDownhillRoutes(grid, starts, goal, settings) {
   const terrain = createTerrain(grid, settings);
 
-  const energy = findMaxArrivalEnergy(terrain, start);
+  const energy = findMaxArrivalEnergy(terrain, starts);
   const mask = new Uint8Array(terrain.size);
   const reachableCells = markWhere(mask, REACHABLE, (i) => energy[i] >= 0);
   // Under the whole-slope rule, show what only the Hang's steepness rules out.
   const hangTooSteepCells = settings.wholeSlope
-    ? markHangTooSteep(mask, grid, start, settings, energy) : 0;
+    ? markHangTooSteep(mask, grid, starts, settings, energy) : 0;
   const zone = cellsWithin(grid, goal, settings.goalRadius);
   const noRoute = { mask, reachableCells, hangTooSteepCells, corridorCells: 0, zone };
 
-  const problem = checkGoal(terrain, start, goal, zone, energy);
+  const problem = checkGoal(terrain, starts[0], goal, zone, energy);
   if (problem) return { ...noRoute, ...problem };
 
   const arrivals = zone.filter((cell) => energy[cell] >= 0);
@@ -40,13 +41,13 @@ export function findDownhillRoutes(grid, start, goal, settings) {
 
 // Cells the skier could reach from A judging each cell by its own slope, but not under the
 // whole-slope rule (energy is the latter).
-function markHangTooSteep(mask, grid, start, settings, energy) {
-  const ownSlopeEnergy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, wholeSlope: false }), start);
+function markHangTooSteep(mask, grid, starts, settings, energy) {
+  const ownSlopeEnergy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, wholeSlope: false }), starts);
   return markWhere(mask, HANG_TOO_STEEP, (i) => ownSlopeEnergy[i] >= 0 && energy[i] < 0);
 }
 
 // All cells whose centre lies within radius metres of the centre of `center`.
-function cellsWithin(grid, center, radius) {
+export function cellsWithin(grid, center, radius) {
   const { width, height, cellSize } = grid;
   const col = center % width;
   const row = (center - col) / width;

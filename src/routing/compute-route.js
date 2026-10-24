@@ -1,6 +1,6 @@
 // One full route calculation: corridor, exposure and the safest route. Runs in the
 // route worker (see route-worker.js), so it must not touch the page or Leaflet.
-import { findDownhillRoutes, CORRIDOR } from './downhill.js';
+import { findDownhillRoutes, cellsWithin, CORRIDOR } from './downhill.js';
 import { findExposedCells } from './exposure.js';
 import { findSafestRoute, angleSearchRounds } from './safest-route.js';
 import { findHangs } from './hang.js';
@@ -22,13 +22,15 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
     onStep('Hänge abgrenzen');
     hangs = findHangs(grid, settings); // cached for the steps below
   }
+  // The skier may set off anywhere within goalRadius of A, as they may arrive anywhere near B.
+  const starts = [a, ...cellsWithin(grid, a, settings.goalRadius).filter((cell) => cell !== a)];
   onStep('Korridor');
-  const corridor = findDownhillRoutes(grid, a, b, settings);
+  const corridor = findDownhillRoutes(grid, starts, b, settings);
   let result = { ...corridor, path: [] };
   if (!corridor.reason) {
     onStep('Exponierte Stellen');
     const exposed = markExposure(grid, corridor, settings);
-    result = { ...corridor, ...findSafestRoute(grid, a, corridor.zone, settings, exposed, onStep) };
+    result = { ...corridor, ...findSafestRoute(grid, starts, corridor.zone, settings, exposed, onStep) };
     result.exposedRouteLength = exposedLength(result, exposed);
   }
   delete result.zone;

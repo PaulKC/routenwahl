@@ -93,8 +93,11 @@ export function createRouteLayer(map, showStatus) {
     const grid = createGridGeometry(geometry);
     if (result.hangLabels) showHangs(grid, result.hangLabels, result.hangSteepest);
     if (result.mask) drawCells(grid, result.mask, (value) => COLORS[value]);
+    L.circle(last.start, { radius: last.settings.goalRadius, color: '#2e7d32', weight: 2, dashArray: '4 4', fill: false })
+      .bindTooltip('Startbereich')
+      .addTo(group);
     L.circle(last.end, { radius: last.settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
-      .bindTooltip('Zielbereich um B')
+      .bindTooltip('Zielbereich')
       .addTo(group);
     if (result.path.length) {
       L.polyline(result.path.map(grid.latLngOf), { color: '#0d47a1', weight: 3 })

@@ -33,8 +33,9 @@ Pulver, Nass, next to the danger level) set the
 friction (hard/frozen spring snow 0.03, typical 0.07, wet new snow 0.14; measured values from
 Wolfsperger, Meyer & Gilgien 2021, doi:10.3389/fmech.2021.728722) and the panel shows the
 minimum gliding slope atan(friction). Cells whose
-terrain slope is steeper than the max angle (default 30°) are excluded. B is a target
-zone (default radius 25 m): arriving anywhere inside it counts.
+terrain slope is steeper than the max angle (default 30°) are excluded. A and B are
+zones (default radius 25 m): setting off anywhere inside A's (where skiable) and arriving
+anywhere inside B's counts.
 Exposed corridor cells are shown in purple: following the fall line from there for
 75 m (further while it is 30° or steeper) runs into a cliff, i.e. terrain of 45°
 or steeper dropping at least 10 m, with gentler gaps of up to 10 m bridged
