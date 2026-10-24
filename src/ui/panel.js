@@ -20,6 +20,8 @@ export function createPanel({ onReset, onSettingsChange }) {
     wholeSlope: el('whole-slope').checked,
     patchSize: Math.max(0, Number(el('patch-size').value) || 0),
     hangAngle: Math.min(90, Math.max(0, Number(el('hang-angle').value) || 0)),
+    rockAngle: Math.min(90, Math.max(0, Number(el('rock-angle').value) || 0)),
+    ribAngle: Math.min(180, Math.max(0, Number(el('rib-angle').value) || 0)),
     aspectSplit: Math.min(180, Math.max(0, Number(el('aspect-split').value) || 0)),
     showHangs: el('show-hangs').checked,
   });
@@ -58,7 +60,7 @@ export function createPanel({ onReset, onSettingsChange }) {
   });
   showFriction();
 
-  for (const id of ['max-angle', 'whole-slope', 'patch-size', 'hang-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
+  for (const id of ['max-angle', 'whole-slope', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
     el(id).addEventListener('change', () => {
       showFriction();
       onSettingsChange(settings());
