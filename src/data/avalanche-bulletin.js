@@ -5,6 +5,10 @@
 const BULLETIN_URL = 'https://aws.slf.ch/api/bulletin/caaml/v4/de/geojson';
 
 const LEVEL = { low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
+const SUB_RANK = { minus: 0, neutral: 1, plus: 2 };
+
+// Orders dangers by level, then by subdivision (− < = < +); a missing subdivision counts as =.
+export const dangerRank = ({ level, subdivision }) => level * 3 + (SUB_RANK[subdivision] ?? 1);
 
 let pending = null;
 
@@ -39,9 +43,8 @@ export function dangerAt(bulletin, { lat, lng }) {
   let best = null;
   for (const rating of feature.properties.dangerRatings ?? []) {
     const level = LEVEL[rating.mainValue];
-    if (level && (!best || level > best.level)) {
-      best = { level, subdivision: rating.customData?.CH?.subdivision ?? null };
-    }
+    const danger = { level, subdivision: rating.customData?.CH?.subdivision ?? null };
+    if (level && (!best || dangerRank(danger) > dangerRank(best))) best = danger;
   }
   if (!best) return null;
   return {

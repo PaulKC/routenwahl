@@ -90,6 +90,7 @@ body,
 }
 
 #danger-levels button,
+#danger-subs button,
 #snow-presets button {
   height: 36px;
   padding: 0;
@@ -102,17 +103,37 @@ body,
 }
 
 #danger-levels button[aria-checked="true"],
+#danger-subs button[aria-checked="true"],
 #snow-presets button[aria-checked="true"] {
   border-color: #0d47a1;
   box-shadow: 0 0 0 2px white inset;
 }
 
+/* − = + within mässig and erheblich. */
+#danger-subs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
+#danger-subs[hidden] {
+  display: none;
+}
+
+#danger-subs button {
+  height: 28px;
+  font-size: 16px;
+}
+
 /* The level from the SLF bulletin carries a small tag. */
-#danger-levels button {
+#danger-levels button,
+#danger-subs button {
   position: relative;
 }
 
-#danger-levels button.slf::after {
+#danger-levels button.slf::after,
+#danger-subs button.slf::after {
   content: 'SLF';
   position: absolute;
   top: -7px;
