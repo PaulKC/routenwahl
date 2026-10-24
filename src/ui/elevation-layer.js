@@ -1,5 +1,6 @@
 // Elevation tiles covering the A–B bounding box plus a margin, outlined on the map.
 import { MAX_TILES, findElevationTiles, downloadTiles } from '../data/elevation-data.js';
+import { REGIONS, regionAt } from '../data/regions.js';
 
 const ELEVATION_MARGIN_M = 1500; // routes that avoid steep terrain often detour outside the A–B box
 
@@ -25,10 +26,17 @@ export function createElevationLayer(map, showStatus) {
     const dLng = ELEVATION_MARGIN_M / (111320 * Math.cos(bounds.getCenter().lat * Math.PI / 180));
     const bbox = [bounds.getWest() - dLng, bounds.getSouth() - dLat, bounds.getEast() + dLng, bounds.getNorth() + dLat];
 
-    showStatus('Höhendaten: suche Kacheln…');
+    const region = regionAt(start);
+    if (!region || regionAt(end) !== region) {
+      const names = REGIONS.map((r) => r.name).join(', ');
+      showStatus(`Höhendaten: A und B müssen im selben unterstützten Gebiet liegen (${names})`);
+      return null;
+    }
+
+    showStatus(`Höhendaten (${region.name}): suche Kacheln…`);
     let tiles;
     try {
-      tiles = await findElevationTiles(bbox, request.signal);
+      tiles = await findElevationTiles(region, bbox, request.signal);
     } catch (err) {
       if (!request.signal.aborted) showStatus(`Höhendaten: Fehler (${err.message})`);
       return null;
@@ -41,8 +49,7 @@ export function createElevationLayer(map, showStatus) {
 
     const outlines = new Map();
     for (const tile of tiles) {
-      const [w, s, e, n] = tile.bbox;
-      outlines.set(tile.url, L.rectangle([[s, w], [n, e]], { color: '#777', weight: 1, fillOpacity: 0.05, interactive: false })
+      outlines.set(tile.url, L.polygon(tile.outline, { color: '#777', weight: 1, fillOpacity: 0.05, interactive: false })
         .addTo(tileOutlines));
     }
 

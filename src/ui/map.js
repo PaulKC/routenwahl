@@ -1,4 +1,6 @@
-// Base map with swisstopo and OpenTopoMap layers.
+// Base map with swisstopo, Kartverket and OpenTopoMap layers.
+import { regionAt } from '../data/regions.js';
+
 const swisstopo = (layer, format = 'jpeg') =>
   `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.${format}`;
 const swisstopoAttribution = '&copy; <a href="https://www.swisstopo.admin.ch/">swisstopo</a>';
@@ -13,6 +15,10 @@ export function createMap(elementId) {
       maxZoom: 19,
       attribution: swisstopoAttribution,
     }),
+    'Norwegen Topo': L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.kartverket.no/">Kartverket</a>',
+    }),
     'OpenTopoMap': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 17,
       attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Style &copy; OpenTopoMap (CC-BY-SA)',
@@ -20,20 +26,35 @@ export function createMap(elementId) {
   };
 
   const overlays = {
-    'Hangneigung > 30°': L.tileLayer(swisstopo('ch.swisstopo.hangneigung-ueber_30', 'png'), {
+    'Hangneigung > 30° (nur Schweiz)': L.tileLayer(swisstopo('ch.swisstopo.hangneigung-ueber_30', 'png'), {
       maxZoom: 19,
       opacity: 0.6,
       attribution: swisstopoAttribution,
     }),
   };
 
+  // The national maps only cover their own country, so pick the one for where the map is.
+  const baseLayerFor = (latlng) => baseLayers[regionAt(latlng)?.baseLayer ?? 'OpenTopoMap'];
+  const regionalLayers = new Set([baseLayers['Landeskarte'], baseLayers['Winterlandeskarte'], baseLayers['Norwegen Topo']]);
+
   const view = loadView();
+  let baseLayer = baseLayerFor(L.latLng(view.center));
   const map = L.map(elementId, {
     center: view.center,
     zoom: view.zoom,
-    layers: [baseLayers['Winterlandeskarte']],
+    layers: [baseLayer],
   });
-  map.on('moveend', () => saveView(map));
+  map.on('baselayerchange', (e) => { baseLayer = e.layer; });
+  map.on('moveend', () => {
+    saveView(map);
+    // Leave a national map that doesn't cover the view; other choices are the user's.
+    const preferred = baseLayerFor(map.getCenter());
+    if (regionalLayers.has(baseLayer) && preferred !== baseLayer && !sameRegion(baseLayers, baseLayer, preferred)) {
+      map.removeLayer(baseLayer);
+      map.addLayer(preferred);
+      baseLayer = preferred;
+    }
+  });
 
   L.control.layers(baseLayers, overlays).addTo(map);
   L.control.scale({ imperial: false }).addTo(map);
@@ -41,6 +62,12 @@ export function createMap(elementId) {
   // so it moves down instead of overlapping when the switcher opens.
   addElementAsControl(map, 'legend', 'topright');
   return map;
+}
+
+// Landeskarte and Winterlandeskarte both cover Switzerland, so switching between them is fine.
+function sameRegion(baseLayers, a, b) {
+  const swiss = [baseLayers['Landeskarte'], baseLayers['Winterlandeskarte']];
+  return swiss.includes(a) && swiss.includes(b);
 }
 
 function addElementAsControl(map, elementId, position) {

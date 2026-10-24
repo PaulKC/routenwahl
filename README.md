@@ -6,9 +6,14 @@ may follow later.
 
 ## Status
 
-Map page (Leaflet + swisstopo). Click to set start (A) and end (B); the app then
-downloads the swissALTI3D 2 m elevation GeoTIFFs covering A–B plus 1.5 km margin
-from the swisstopo STAC API (data.geo.admin.ch) and outlines them on the map.
+Map page (Leaflet). Click to set start (A) and end (B); the app then downloads 2 m
+elevation GeoTIFFs covering A–B plus 1.5 km margin and outlines them on the map.
+Supported regions (src/data/regions.js), each in its own metric grid via proj4:
+- Switzerland: swissALTI3D from the swisstopo STAC API (data.geo.admin.ch), LV95,
+  swisstopo maps.
+- Norway: Kartverket's national DTM through its WCS (wcs.geonorge.no), cut into
+  1 km squares of UTM 33N (EPSG:25833), Kartverket topo map.
+The base map switches to the national map of the region in view.
 It then finds every route from A to B on the 2 m grid that a skier can ride while
 carrying speed: speed is tracked as energy (v^2/2g), gained by losing height, lost to
 friction, capped at a max speed (default friction 0.07, 20 km/h). Snow presets set the

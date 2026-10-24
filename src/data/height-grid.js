@@ -1,5 +1,5 @@
-// Merges downloaded swissALTI3D tiles into one LV95-aligned height grid.
-import { toLV95, fromLV95 } from './lv95.js';
+// Merges downloaded elevation tiles (all in the same metric crs) into one height grid.
+import { toProjected, fromProjected } from './projection.js';
 
 export function buildHeightGrid(tiles) {
   const cellSize = tiles[0].resolution;
@@ -17,7 +17,7 @@ export function buildHeightGrid(tiles) {
     for (let r = 0; r < tile.height; r += 1) {
       for (let c = 0; c < tile.width; c += 1) {
         const h = tile.heights[r * tile.width + c];
-        if (h > -1000) heights[(row0 + r) * width + col0 + c] = h;
+        if (h > -1000 && h < 10000) heights[(row0 + r) * width + col0 + c] = h;
       }
     }
   }
@@ -25,7 +25,7 @@ export function buildHeightGrid(tiles) {
   let slopes = null;
 
   return {
-    ...createGridGeometry({ west, north, width, height, cellSize }),
+    ...createGridGeometry({ crs: tiles[0].crs, west, north, width, height, cellSize }),
     heights,
     // Terrain slope in degrees per cell (Horn's 3x3 method), computed on first use.
     slopes() {
@@ -38,12 +38,12 @@ export function buildHeightGrid(tiles) {
 // Where the grid's cells are, without the heights. `geometry` is plain data that can be
 // sent to or from a worker and turned back into these helpers.
 export function createGridGeometry(geometry) {
-  const { west, north, width, height, cellSize } = geometry;
+  const { crs, west, north, width, height, cellSize } = geometry;
 
-  // Cell index for a LV95 coordinate, or -1 outside the grid.
-  const cellAtLV95 = (e, n) => {
-    const col = Math.floor((e - west) / cellSize);
-    const row = Math.floor((north - n) / cellSize);
+  // Cell index for a coordinate in the grid's crs, or -1 outside the grid.
+  const cellAtProjected = (x, y) => {
+    const col = Math.floor((x - west) / cellSize);
+    const row = Math.floor((north - y) / cellSize);
     return col >= 0 && col < width && row >= 0 && row < height ? row * width + col : -1;
   };
 
@@ -52,17 +52,18 @@ export function createGridGeometry(geometry) {
     width,
     height,
     cellSize,
-    cellAtLV95,
+    crs,
+    cellAtProjected,
     // Index of the cell containing a WGS84 point, or -1 outside the grid.
     cellAt(latlng) {
-      const { e, n } = toLV95(latlng);
-      return cellAtLV95(e, n);
+      const { x, y } = toProjected(crs, latlng);
+      return cellAtProjected(x, y);
     },
     // WGS84 position of a cell centre.
     latLngOf(index) {
       const col = index % width;
       const row = Math.floor(index / width);
-      return fromLV95(west + (col + 0.5) * cellSize, north - (row + 0.5) * cellSize);
+      return fromProjected(crs, west + (col + 0.5) * cellSize, north - (row + 0.5) * cellSize);
     },
   };
 }

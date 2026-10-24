@@ -3,7 +3,7 @@
 import { createGridGeometry } from '../data/height-grid.js';
 import { REACHABLE, CORRIDOR } from '../routing/downhill.js';
 import { EXPOSED } from '../routing/compute-route.js';
-import { toLV95 } from '../data/lv95.js';
+import { toProjected } from '../data/projection.js';
 
 const COLORS = {
   [REACHABLE]: [255, 152, 0, 90], // orange: reachable from A, but dead end
@@ -11,6 +11,7 @@ const COLORS = {
   [EXPOSED]: [156, 39, 176, 170], // purple: on some route to B, but exposed
 };
 const MAX_OVERLAY_PX = 2048;
+const EXACT_EVERY_PX = 16; // overlay pixels between exact projections; the rest is interpolated
 
 // showStatus(text, progress) shows a status line; progress is { label, done, total } while a
 // calculation runs and null otherwise.
@@ -52,7 +53,7 @@ export function createRouteLayer(map, showStatus) {
     const plain = (ll) => ({ lat: ll.lat, lng: ll.lng });
     worker.postMessage({
       id: running,
-      tiles: workerTiles === tiles ? null : tiles.map(({ origin, width, height, resolution, heights }) => ({ origin, width, height, resolution, heights })),
+      tiles: workerTiles === tiles ? null : tiles.map(({ crs, origin, width, height, resolution, heights }) => ({ crs, origin, width, height, resolution, heights })),
       start: plain(start),
       end: plain(end),
       settings,
@@ -121,14 +122,21 @@ export function createRouteLayer(map, showStatus) {
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     const image = ctx.createImageData(w, h);
+    // Projecting every pixel is slow, so each row projects every EXACT_EVERY_PX-th pixel and
+    // interpolates in between (off by millimetres at this scale).
+    const lngAt = (x) => bounds.getWest() + ((x + 0.5) / w) * (bounds.getEast() - bounds.getWest());
     for (let y = 0; y < h; y += 1) {
       const lat = bounds.getNorth() - ((y + 0.5) / h) * (bounds.getNorth() - bounds.getSouth());
-      for (let x = 0; x < w; x += 1) {
-        const lng = bounds.getWest() + ((x + 0.5) / w) * (bounds.getEast() - bounds.getWest());
-        const { e, n } = toLV95({ lat, lng });
-        const cell = grid.cellAtLV95(e, n);
-        const color = cell >= 0 && COLORS[mask[cell]];
-        if (color) image.data.set(color, (y * w + x) * 4);
+      for (let x0 = 0; x0 < w; x0 += EXACT_EVERY_PX) {
+        const x1 = Math.min(x0 + EXACT_EVERY_PX, w - 1);
+        const p0 = toProjected(grid.crs, { lat, lng: lngAt(x0) });
+        const p1 = toProjected(grid.crs, { lat, lng: lngAt(x1) });
+        for (let x = x0; x < Math.min(x0 + EXACT_EVERY_PX, w); x += 1) {
+          const t = x1 > x0 ? (x - x0) / (x1 - x0) : 0;
+          const cell = grid.cellAtProjected(p0.x + t * (p1.x - p0.x), p0.y + t * (p1.y - p0.y));
+          const color = cell >= 0 && COLORS[mask[cell]];
+          if (color) image.data.set(color, (y * w + x) * 4);
+        }
       }
     }
     ctx.putImageData(image, 0, 0);
