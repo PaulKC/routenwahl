@@ -50,5 +50,12 @@ map.on('moveend click', showDanger);
 panel.showPoints(null, null);
 showDanger();
 
+// Installable app that also starts offline (see sw.js).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {
+    // not available here (e.g. plain http on another host); the app works without it
+  });
+}
+
 // Handy for debugging in the browser console.
 window.app = { map, picker, elevation, routes };

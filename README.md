@@ -62,6 +62,16 @@ out are shown in red. A debug checkbox under "Erweitert" colours each Hang and s
 steepest patch under the cursor. The other parameters, including a custom max angle, are under
 "Erweitert".
 
+## Install as an app (PWA)
+
+manifest.webmanifest, icons/ and the service worker sw.js make the page installable ("Zum
+Startbildschirm hinzufügen" on a phone, the install button in the address bar on a desktop).
+The service worker keeps the app's files (network first, so changes show on the next reload)
+and the pinned libraries (cache first), so the app starts offline. Map tiles, the SLF
+bulletin and the place search still need a connection; elevation tiles keep their own cache.
+New source files belong in APP_FILES in sw.js, and a change to the caching rules needs a new
+CACHE name. Installing needs https, or localhost.
+
 ## Run locally
 
 No build step. Serve the folder with any static server, e.g.:
