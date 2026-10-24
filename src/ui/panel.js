@@ -98,8 +98,9 @@ export function createPanel({ onReset, onSettingsChange }) {
           ? 'Klicke auf die Karte, um das Ziel zu setzen'
           : 'Punkte können verschoben werden';
     },
-    showElevationStatus(text) {
+    showElevationStatus(text, details = '') {
       el('elevation-status').textContent = text;
+      el('elevation-details').textContent = details;
     },
     showRouteStatus(text, progress = null, details = '') {
       el('route-status').textContent = text;

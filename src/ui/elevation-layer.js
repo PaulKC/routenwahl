@@ -5,6 +5,7 @@ import { REGIONS, regionsAt } from '../data/regions.js';
 const ELEVATION_MARGIN_M = 1500; // routes that avoid steep terrain often detour outside the A–B box
 
 // load() resolves to the downloaded tiles, or null if it was cancelled or something failed.
+// showStatus(summary, details) shows a short line and, under "Erweitert", the details.
 export function createElevationLayer(map, showStatus) {
   const tileOutlines = L.layerGroup().addTo(map);
   let elevationRequest = null;
@@ -13,7 +14,7 @@ export function createElevationLayer(map, showStatus) {
     elevationRequest?.abort();
     elevationRequest = null;
     tileOutlines.clearLayers();
-    showStatus('');
+    showStatus('', '');
   }
 
   async function load(start, end) {
@@ -26,32 +27,34 @@ export function createElevationLayer(map, showStatus) {
     const dLng = ELEVATION_MARGIN_M / (111320 * Math.cos(bounds.getCenter().lat * Math.PI / 180));
     const bbox = [bounds.getWest() - dLng, bounds.getSouth() - dLat, bounds.getEast() + dLng, bounds.getNorth() + dLat];
 
-    showStatus('Höhendaten: suche Datenquelle…');
+    const loading = 'Höhendaten werden geladen…';
+    const failedLine = 'Höhendaten konnten nicht geladen werden';
+    showStatus(loading, 'Höhendaten: suche Datenquelle…');
     let region;
     try {
       region = await findRegion(start, end, request.signal);
     } catch (err) {
-      if (!request.signal.aborted) showStatus(`Höhendaten: Fehler (${err.message})`);
+      if (!request.signal.aborted) showStatus(failedLine, `Höhendaten: Fehler (${err.message})`);
       return null;
     }
     if (request.signal.aborted) return null;
     if (!region) {
       const names = REGIONS.map((r) => r.name).join(', ');
-      showStatus(`Höhendaten: A und B müssen im selben unterstützten Gebiet liegen (${names})`);
+      showStatus('Start und Ziel müssen im selben unterstützten Gebiet liegen', `Unterstützte Gebiete: ${names}`);
       return null;
     }
 
-    showStatus(`Höhendaten (${region.name}): suche Kacheln…`);
+    showStatus(loading, `Höhendaten (${region.name}): suche Kacheln…`);
     let tiles;
     try {
       tiles = await findElevationTiles(region, bbox, request.signal);
     } catch (err) {
-      if (!request.signal.aborted) showStatus(`Höhendaten: Fehler (${err.message})`);
+      if (!request.signal.aborted) showStatus(failedLine, `Höhendaten: Fehler (${err.message})`);
       return null;
     }
     if (request.signal.aborted) return null;
     if (tiles.length > MAX_TILES) {
-      showStatus(`Höhendaten: ${tiles.length} Kacheln, zu viele (max. ${MAX_TILES}). Punkte näher setzen.`);
+      showStatus('Start und Ziel liegen zu weit auseinander', `Höhendaten: ${tiles.length} Kacheln, zu viele (max. ${MAX_TILES}).`);
       return null;
     }
 
@@ -73,7 +76,12 @@ export function createElevationLayer(map, showStatus) {
       const range = min <= max ? `, ${Math.round(min)}–${Math.round(max)} m ü. M.` : '';
       const errors = failed ? `, ${failed} Fehler` : '';
       const coarse = region.coarse ? '. Nur 10 m Auflösung: Neigung und Absturzgelände werden unterschätzt' : '';
-      showStatus(`Höhendaten (${region.name}${coarse}): ${loaded}/${tiles.length} Kacheln (${mb} MB, ${fromStore} aus dem Cache)${range}${errors}`);
+      const details = `Höhendaten (${region.name}${coarse}): ${loaded}/${tiles.length} Kacheln (${mb} MB, ${fromStore} aus dem Cache)${range}${errors}`;
+      // Short line: progress while loading; once done only what the user must know.
+      const summary = loaded + failed < tiles.length ? `${loading} ${Math.round(((loaded + failed) / tiles.length) * 100)} %`
+        : failed ? `${failedLine} (${failed} von ${tiles.length} Kacheln)`
+          : region.coarse ? 'Nur grobe Höhendaten (10 m): Steilheit wird unterschätzt' : '';
+      showStatus(summary, details);
     };
     showProgress();
 
