@@ -171,7 +171,13 @@ body,
   width: 4.5em;
 }
 
-.friction-row {
+.settings input[type="checkbox"] {
+  width: auto;
+  margin: 0 4px 0 0;
+}
+
+.friction-row,
+.hang-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -338,6 +344,10 @@ details.map-card > :not(summary) {
 
 .swatch.reachable {
   background: rgba(255, 152, 0, 0.35);
+}
+
+.swatch.hang {
+  background: rgba(229, 57, 53, 0.43);
 }
 
 .swatch.tile {

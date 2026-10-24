@@ -51,7 +51,13 @@ the current SLF bulletin (aws.slf.ch, GeoJSON, CC BY 4.0) for A and B, or the ma
 they are set; of several ratings (by elevation or time of day) and of A and B the highest
 counts, and its button carries an "SLF" tag; picking another level overrides it, picking the
 tagged one follows the bulletin again. Outside Switzerland, out of season or when the bulletin can't be loaded, the level is
-picked by hand (preselected 3). The other parameters, including a custom max angle, are under
+picked by hand (preselected 3).
+From level 3 the steepest part of the whole slope counts, not just the slope on the track
+(src/routing/hang.js): a patch's steepness is the median slope over 10 × 10 m around a cell
+(the reduction method's "steilste Hangpartie"; sources give 10 or 20 m); a Hang is a
+connected area of patches at 30° or steeper whose aspect stays within 60° of the Hang's mean
+aspect; each cell of a Hang is judged by its steepest patch. Cells that only this rule rules
+out are shown in red. The other parameters, including a custom max angle, are under
 "Erweitert".
 
 ## Run locally

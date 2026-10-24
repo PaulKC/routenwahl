@@ -6,7 +6,9 @@
 // and is only allowed if the energy stays at or above zero. So flat or slightly uphill
 // bits are fine as long as the skier arrives with enough speed. Cells whose terrain is
 // steeper than maxAngle, or marked in the optional `blocked` mask, are off limits (only A
-// itself may be either).
+// itself may be either). With `wholeSlope` set, a cell counts as steep as the steepest part
+// of its Hang (see hang.js) instead of its own slope.
+import { hangSlopes } from './hang.js';
 
 const G = 9.81;
 export const EPSILON = 1e-3; // ignore improvements smaller than 1 mm of energy
@@ -16,22 +18,25 @@ export const speedToEnergy = (kmh) => (kmh / 3.6) ** 2 / (2 * G);
 export const energyToSpeed = (energy) => Math.sqrt(2 * G * energy) * 3.6;
 
 // Grid plus the rules of the energy model.
-export function createTerrain(grid, { friction, maxSpeedKmh, maxAngle, blocked = null }) {
+export function createTerrain(grid, settings) {
+  const { friction, maxSpeedKmh, maxAngle, blocked = null } = settings;
   const { width, height, heights, cellSize } = grid;
   const slopes = grid.slopes();
+  const limitSlopes = settings.wholeSlope ? hangSlopes(grid, settings) : slopes;
   const stepLength = [cellSize, cellSize * Math.SQRT2]; // [straight, diagonal]
   const frictionLoss = [friction * cellSize, friction * cellSize * Math.SQRT2];
 
   return {
     width,
     heights,
-    slopes,
+    slopes, // each cell's own slope
+    limitSlopes, // the slope checked against maxAngle
     size: width * height,
     maxEnergy: speedToEnergy(maxSpeedKmh),
     stepLength,
     frictionLoss,
 
-    isSkiable: (cell) => slopes[cell] <= maxAngle && !blocked?.[cell], // false for NaN (no data)
+    isSkiable: (cell) => limitSlopes[cell] <= maxAngle && !blocked?.[cell], // false for NaN (no data)
 
     // Calls visit(neighbour, diagonal) for each of the up to 8 neighbours; diagonal is 0 or 1.
     forEachNeighbour(cell, visit) {

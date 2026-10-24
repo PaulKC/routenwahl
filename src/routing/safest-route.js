@@ -47,7 +47,7 @@ export function findSafestRoute(grid, start, zone, settings, exposed, onStep = (
   const penalised = avoidsExposure ? null : exposed;
   const { path, energyAtEnd } = findGentlestPath(terrain, start, arrivals, needed, feasible, penalised);
 
-  const { width, slopes, heights, stepLength } = terrain;
+  const { width, slopes, limitSlopes, heights, stepLength } = terrain;
   let length = 0;
   for (let i = 1; i < path.length; i += 1) {
     const diagonal = path[i] % width !== path[i - 1] % width && Math.floor(path[i] / width) !== Math.floor(path[i - 1] / width);
@@ -58,6 +58,7 @@ export function findSafestRoute(grid, start, zone, settings, exposed, onStep = (
     path,
     length,
     maxSlope: Math.max(...path.slice(1).map((cell) => slopes[cell])),
+    maxHangSlope: settings.wholeSlope ? Math.max(...path.slice(1).map((cell) => limitSlopes[cell])) : null,
     descent: heights[start] - heights[end],
     arrivalSpeedKmh: energyToSpeed(energyAtEnd),
     avoidsExposure,
@@ -70,7 +71,7 @@ export function findSafestRoute(grid, start, zone, settings, exposed, onStep = (
 // is at least what that cell needs to still reach B (from pass 2), so the result is always
 // rideable. Stops at the first cell of B's zone it settles.
 function findGentlestPath(terrain, start, goalCells, needed, angleLimit, penalised) {
-  const { size, heights, slopes, maxEnergy, frictionLoss, stepLength } = terrain;
+  const { size, heights, limitSlopes, maxEnergy, frictionLoss, stepLength } = terrain;
   const isGoal = new Uint8Array(size);
   for (const cell of goalCells) isGoal[cell] = 1;
   const cost = new Float64Array(size).fill(Infinity);
@@ -91,7 +92,7 @@ function findGentlestPath(terrain, start, goalCells, needed, angleLimit, penalis
       if (done[next] || !terrain.isSkiable(next)) return;
       const arrival = Math.min(maxEnergy, energy[cell] + heights[cell] - heights[next] - frictionLoss[diagonal]);
       if (!(arrival >= 0 && arrival >= needed[next] - EPSILON)) return;
-      const steepness = slopes[next] / angleLimit;
+      const steepness = limitSlopes[next] / angleLimit;
       const exposure = penalised?.[next] ? EXPOSURE_PENALTY : 0;
       const nextCost = cost[cell] + stepLength[diagonal] * (1 + STEEPNESS_PENALTY * steepness * steepness + exposure);
       if (nextCost < cost[next]) {

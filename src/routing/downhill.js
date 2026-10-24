@@ -14,6 +14,7 @@ import {
 
 export const REACHABLE = 1; // reachable from A, but B can't be reached from here
 export const CORRIDOR = 2; // on at least one feasible route from A to B
+export const HANG_TOO_STEEP = 4; // reachable by its own slope, but its Hang is too steep
 
 export function findDownhillRoutes(grid, start, goal, settings) {
   const terrain = createTerrain(grid, settings);
@@ -21,8 +22,11 @@ export function findDownhillRoutes(grid, start, goal, settings) {
   const energy = findMaxArrivalEnergy(terrain, start);
   const mask = new Uint8Array(terrain.size);
   const reachableCells = markWhere(mask, REACHABLE, (i) => energy[i] >= 0);
+  // Under the whole-slope rule, show what only the Hang's steepness rules out.
+  const hangTooSteepCells = settings.wholeSlope
+    ? markHangTooSteep(mask, grid, start, settings, energy) : 0;
   const zone = cellsWithin(grid, goal, settings.goalRadius);
-  const noRoute = { mask, reachableCells, corridorCells: 0, zone };
+  const noRoute = { mask, reachableCells, hangTooSteepCells, corridorCells: 0, zone };
 
   const problem = checkGoal(terrain, start, goal, zone, energy);
   if (problem) return { ...noRoute, ...problem };
@@ -31,7 +35,14 @@ export function findDownhillRoutes(grid, start, goal, settings) {
   const needed = findMinEnergyNeeded(terrain, arrivals, energy);
   const corridorCells = markWhere(mask, CORRIDOR, (i) => energy[i] >= 0 && energy[i] >= needed[i] - EPSILON);
 
-  return { mask, reachableCells, corridorCells, zone, reason: null };
+  return { mask, reachableCells, hangTooSteepCells, corridorCells, zone, reason: null };
+}
+
+// Cells the skier could reach from A judging each cell by its own slope, but not under the
+// whole-slope rule (energy is the latter).
+function markHangTooSteep(mask, grid, start, settings, energy) {
+  const ownSlopeEnergy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, wholeSlope: false }), start);
+  return markWhere(mask, HANG_TOO_STEEP, (i) => ownSlopeEnergy[i] >= 0 && energy[i] < 0);
 }
 
 // All cells whose centre lies within radius metres of the centre of `center`.
@@ -51,10 +62,10 @@ function cellsWithin(grid, center, radius) {
 
 // Why there can't be a route into B's zone, or null if pass 2 is worth running.
 function checkGoal(terrain, start, goal, zone, energy) {
-  const { heights, slopes } = terrain;
+  const { heights, limitSlopes } = terrain;
   if (Number.isNaN(heights[start]) || Number.isNaN(heights[goal])) return { reason: 'no-data' };
   if (!zone.some((cell) => heights[cell] < heights[start])) return { reason: 'goal-higher' };
-  if (!zone.some(terrain.isSkiable)) return { reason: 'goal-steep', goalSlope: slopes[goal] };
+  if (!zone.some(terrain.isSkiable)) return { reason: 'goal-steep', goalSlope: limitSlopes[goal] };
   if (!zone.some((cell) => energy[cell] >= 0)) return { reason: 'blocked' };
   return null;
 }

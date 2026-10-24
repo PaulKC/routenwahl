@@ -17,17 +17,31 @@ export function createPanel({ onReset, onSettingsChange }) {
     cliffAngle: Math.min(90, Math.max(0, Number(el('cliff-angle').value) || 0)),
     fallDistance: Math.max(0, Number(el('fall-distance').value) || 0),
     minFallHeight: Math.max(0, Number(el('min-fall-height').value) || 0),
+    wholeSlope: el('whole-slope').checked,
+    patchSize: Math.max(0, Number(el('patch-size').value) || 0),
+    hangAngle: Math.min(90, Math.max(0, Number(el('hang-angle').value) || 0)),
+    aspectSplit: Math.min(180, Math.max(0, Number(el('aspect-split').value) || 0)),
   });
 
-  // The danger level sets the max angle; typing an angle by hand overrides the level.
+  // The danger level sets the max angle and whether the whole Hang counts; changing either
+  // by hand overrides the level.
+  const applyDanger = ({ maxAngle, wholeSlope }) => {
+    el('max-angle').value = maxAngle;
+    el('whole-slope').checked = wholeSlope;
+  };
   const danger = createDangerPicker({
-    onChange: (angle) => {
-      el('max-angle').value = angle;
+    onChange: (values) => {
+      applyDanger(values);
       onSettingsChange(settings());
     },
   });
-  el('max-angle').value = danger.maxAngle();
-  el('max-angle').addEventListener('change', () => danger.setCustom(settings().maxAngle));
+  applyDanger(danger.current());
+  for (const id of ['max-angle', 'whole-slope']) {
+    el(id).addEventListener('change', () => {
+      const { maxAngle, wholeSlope } = settings();
+      danger.setCustom({ maxAngle, wholeSlope });
+    });
+  }
 
   // Snow presets set the friction input; the angle below which skis stop gliding is atan(friction).
   const showFriction = () => {
@@ -43,7 +57,7 @@ export function createPanel({ onReset, onSettingsChange }) {
   });
   showFriction();
 
-  for (const id of ['max-angle', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
+  for (const id of ['max-angle', 'whole-slope', 'patch-size', 'hang-angle', 'aspect-split', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
     el(id).addEventListener('change', () => {
       showFriction();
       onSettingsChange(settings());

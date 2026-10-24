@@ -1,7 +1,7 @@
 // Shows the downhill corridor and an example route on the map. The calculation runs in a
 // Web Worker; starting a new one while another is running cancels the old one.
 import { createGridGeometry } from '../data/height-grid.js';
-import { REACHABLE, CORRIDOR } from '../routing/downhill.js';
+import { REACHABLE, CORRIDOR, HANG_TOO_STEEP } from '../routing/downhill.js';
 import { EXPOSED } from '../routing/compute-route.js';
 import { toProjected } from '../data/projection.js';
 
@@ -9,6 +9,7 @@ const COLORS = {
   [REACHABLE]: [255, 152, 0, 90], // orange: reachable from A, but dead end
   [CORRIDOR]: [46, 125, 50, 150], // green: on some route to B
   [EXPOSED]: [156, 39, 176, 170], // purple: on some route to B, but exposed
+  [HANG_TOO_STEEP]: [229, 57, 53, 110], // red: rideable by its own slope, but its Hang is too steep
 };
 const MAX_OVERLAY_PX = 2048;
 const EXACT_EVERY_PX = 16; // overlay pixels between exact projections; the rest is interpolated
@@ -160,17 +161,19 @@ function describe(grid, result) {
     case 'goal-steep':
       return `Route: der ganze Zielbereich um B ist steiler als die erlaubte Neigung (B: ${Math.round(result.goalSlope)}°)`;
     case 'blocked':
-      return `Route: kein fahrbarer Weg von A (${hA} m) in den Zielbereich um B (${hB} m). Orange = von A aus erreichbar.`;
+      return `Route: kein fahrbarer Weg von A (${hA} m) in den Zielbereich um B (${hB} m). Orange = von A aus erreichbar.`
+        + (result.hangTooSteepCells ? ' Rot = für sich fahrbar, aber der Hang ist zu steil.' : '');
     default: {
       const km = (result.length / 1000).toFixed(2);
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
       const speed = Math.round(result.arrivalSpeedKmh);
       const steepest = Math.round(result.maxSlope);
+      const hang = result.maxHangSlope === null ? '' : `, steilster Hang ${Math.round(result.maxHangSlope)}°`;
       const exposedHa = (result.exposedCells * grid.cellSize ** 2 / 10000).toFixed(1);
       const exposure = result.avoidsExposure
         ? 'meidet exponierte Stellen'
         : `nicht vermeidbar: ${Math.round(result.exposedRouteLength)} m exponiert`;
-      return `Route: Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route (${exposure}): steilste Stelle ${steepest}°, `
+      return `Route: Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route (${exposure}): steilste Stelle ${steepest}°${hang}, `
         + `${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
     }
   }

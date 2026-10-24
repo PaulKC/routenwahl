@@ -3,11 +3,12 @@
 import { findDownhillRoutes, CORRIDOR } from './downhill.js';
 import { findExposedCells } from './exposure.js';
 import { findSafestRoute, angleSearchRounds } from './safest-route.js';
+import { hangSlopes } from './hang.js';
 
 export const EXPOSED = 3; // mask value: corridor cell whose fall line runs into a cliff
 
 // Number of steps computeRoute reports through onStep (if a route is found).
-export const routeSteps = (settings) => 2 + 1 + angleSearchRounds(settings.maxAngle) + 1;
+export const routeSteps = (settings) => (settings.wholeSlope ? 1 : 0) + 2 + 1 + angleSearchRounds(settings.maxAngle) + 1;
 
 // onStep(label) is called before each step, so the page can show progress.
 export function computeRoute(grid, start, end, settings, onStep = () => {}) {
@@ -16,6 +17,10 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
   const b = grid.cellAt(end);
   if (a < 0 || b < 0) return { reason: 'outside', path: [] };
 
+  if (settings.wholeSlope) {
+    onStep('Hänge abgrenzen');
+    hangSlopes(grid, settings); // cached for the steps below
+  }
   onStep('Korridor');
   const corridor = findDownhillRoutes(grid, a, b, settings);
   let result = { ...corridor, path: [] };

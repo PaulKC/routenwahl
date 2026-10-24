@@ -7,28 +7,30 @@ import { loadBulletin, dangerAt } from '../data/avalanche-bulletin.js';
 // & Schweizer: Lawinenkunde, 2012; SLF "Achtung Lawinen!"): at 2 avoid slopes over 40°, at 3
 // over 35°, at 4 over 30°. Level 1 has no limit there, so the cliff threshold of 45° is used;
 // at 5 the SLF advises against tours altogether, 25° is only what the map still shows.
+// From 3 the steepest part of the whole Hang counts, not just the slope on the track
+// (wholeSlope, see routing/hang.js).
 export const DANGER_LEVELS = [
-  { level: 1, name: 'gering', maxAngle: 45 },
-  { level: 2, name: 'mässig', maxAngle: 40 },
-  { level: 3, name: 'erheblich', maxAngle: 35 },
-  { level: 4, name: 'gross', maxAngle: 30 },
-  { level: 5, name: 'sehr gross', maxAngle: 25, warning: 'Das SLF rät bei Stufe 5 von Skitouren ab.' },
+  { level: 1, name: 'gering', maxAngle: 45, wholeSlope: false },
+  { level: 2, name: 'mässig', maxAngle: 40, wholeSlope: false },
+  { level: 3, name: 'erheblich', maxAngle: 35, wholeSlope: true },
+  { level: 4, name: 'gross', maxAngle: 30, wholeSlope: true },
+  { level: 5, name: 'sehr gross', maxAngle: 25, wholeSlope: true, warning: 'Das SLF rät bei Stufe 5 von Skitouren ab.' },
 ];
 
 const SUBDIVISION = { minus: '−', neutral: '=', plus: '+' };
 
-// onChange(maxAngle) fires when the chosen level changes the max angle.
+// onChange({ maxAngle, wholeSlope }) fires when the chosen level changes what it sets.
 export function createDangerPicker({ onChange }) {
   const el = (id) => document.getElementById(id);
   const buttons = [...el('danger-levels').querySelectorAll('button')];
 
-  // 'slf' (the bulletin's level), a level 1-5 picked by hand, or 'custom' when the angle was typed under "Erweitert".
+  // 'slf' (the bulletin's level), a level 1-5 picked by hand, or 'custom' when set under "Erweitert".
   let mode = 'slf';
   const fallbackLevel = 3; // where the bulletin has no level
   let location = [];
   let bulletin = null; // { level, ... } at the location, null if none
   let bulletinState = 'loading'; // 'loading' | 'ok' | 'failed'
-  let angle = null;
+  let applied = null; // { maxAngle, wholeSlope } in effect
 
   const effectiveLevel = () => (mode === 'slf' ? bulletin?.level ?? fallbackLevel : mode === 'custom' ? null : mode);
 
@@ -40,13 +42,13 @@ export function createDangerPicker({ onChange }) {
       button.classList.toggle('slf', value === bulletin?.level);
     }
     const info = DANGER_LEVELS.find((d) => d.level === level);
-    el('danger-angle').textContent = angle === null ? '' : `max. ${angle}°`;
+    el('danger-angle').textContent = applied ? `max. ${applied.maxAngle}°${applied.wholeSlope ? ' im ganzen Hang' : ''}` : '';
     el('danger-info').textContent = describe(info);
     el('danger-warning').textContent = info?.warning ?? '';
   }
 
   function describe(info) {
-    if (mode === 'custom') return 'Eigene Neigung, unter „Erweitert“ eingestellt.';
+    if (mode === 'custom') return 'Eigene Werte, unter „Erweitert“ eingestellt.';
     if (mode !== 'slf') return bulletin ? slfText() : '';
     if (bulletinState === 'loading') return 'SLF-Bulletin wird geladen…';
     if (bulletinState === 'failed') return `SLF-Bulletin nicht erreichbar. Solange gilt Stufe ${info.level}; bitte selbst wählen.`;
@@ -61,14 +63,18 @@ export function createDangerPicker({ onChange }) {
     return `SLF: ${bulletin.level}${sub} ${name}, ${bulletin.regions.join(', ')} · gültig bis ${until}`;
   }
 
-  // Works out the angle for the current level and reports it if it changed.
+  const settingsOf = (level) => {
+    const info = DANGER_LEVELS.find((d) => d.level === level);
+    return info ? { maxAngle: info.maxAngle, wholeSlope: info.wholeSlope } : null;
+  };
+
+  // Works out the settings for the current level and reports them if they changed.
   function update() {
-    const info = DANGER_LEVELS.find((d) => d.level === effectiveLevel());
-    const next = info ? info.maxAngle : angle;
-    const changed = next !== angle;
-    angle = next;
+    const next = settingsOf(effectiveLevel());
+    const changed = next && (next.maxAngle !== applied.maxAngle || next.wholeSlope !== applied.wholeSlope);
+    if (next) applied = next;
     render();
-    if (changed && angle !== null) onChange(angle);
+    if (changed) onChange(applied);
   }
 
   async function lookUp() {
@@ -93,8 +99,8 @@ export function createDangerPicker({ onChange }) {
     });
   }
 
-  // The starting angle is read with maxAngle(), so it isn't reported through onChange.
-  angle = DANGER_LEVELS.find((d) => d.level === effectiveLevel()).maxAngle;
+  // The starting settings are read with current(), so they aren't reported through onChange.
+  applied = settingsOf(effectiveLevel());
   render();
 
   return {
@@ -103,12 +109,12 @@ export function createDangerPicker({ onChange }) {
       location = latlngs;
       lookUp();
     },
-    // The angle was typed by hand under "Erweitert".
-    setCustom(value) {
+    // The angle or the whole-slope rule was set by hand under "Erweitert".
+    setCustom(values) {
       mode = 'custom';
-      angle = value;
+      applied = values;
       render();
     },
-    maxAngle: () => angle,
+    current: () => applied,
   };
 }

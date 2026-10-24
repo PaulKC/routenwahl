@@ -22,14 +22,26 @@ export function buildHeightGrid(tiles) {
     }
   }
 
+  let gradients = null;
   let slopes = null;
 
   return {
     ...createGridGeometry({ crs: tiles[0].crs, west, north, width, height, cellSize }),
     heights,
-    // Terrain slope in degrees per cell (Horn's 3x3 method), computed on first use.
+    // Height change per metre eastwards (dzdx) and southwards (dzdy) per cell, by Horn's 3x3
+    // method, computed on first use.
+    gradients() {
+      gradients ??= computeGradients(heights, width, height, cellSize);
+      return gradients;
+    },
+    // Terrain slope in degrees per cell.
     slopes() {
-      slopes ??= computeSlopes(heights, width, height, cellSize);
+      if (!slopes) {
+        const { dzdx, dzdy } = this.gradients();
+        slopes = new Float32Array(dzdx.length);
+        const toDegrees = 180 / Math.PI;
+        for (let i = 0; i < slopes.length; i += 1) slopes[i] = Math.atan(Math.hypot(dzdx[i], dzdy[i])) * toDegrees; // NaN next to missing data
+      }
       return slopes;
     },
   };
@@ -68,9 +80,9 @@ export function createGridGeometry(geometry) {
   };
 }
 
-function computeSlopes(heights, width, height, cellSize) {
-  const slopes = new Float32Array(width * height);
-  const toDegrees = 180 / Math.PI;
+function computeGradients(heights, width, height, cellSize) {
+  const gx = new Float32Array(width * height);
+  const gy = new Float32Array(width * height);
   for (let row = 0; row < height; row += 1) {
     // Clamp at the grid edge so border cells reuse their own row/column.
     const up = Math.max(row - 1, 0) * width;
@@ -87,10 +99,9 @@ function computeSlopes(heights, width, height, cellSize) {
       const g = heights[down + left];
       const h = heights[down + col];
       const i = heights[down + right];
-      const dzdx = (c + 2 * f + i - (a + 2 * d + g)) / (8 * cellSize);
-      const dzdy = (g + 2 * h + i - (a + 2 * b + c)) / (8 * cellSize);
-      slopes[mid + col] = Math.atan(Math.hypot(dzdx, dzdy)) * toDegrees; // NaN next to missing data
+      gx[mid + col] = (c + 2 * f + i - (a + 2 * d + g)) / (8 * cellSize);
+      gy[mid + col] = (g + 2 * h + i - (a + 2 * b + c)) / (8 * cellSize);
     }
   }
-  return slopes;
+  return { dzdx: gx, dzdy: gy };
 }
