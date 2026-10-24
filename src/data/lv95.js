@@ -31,5 +31,5 @@ export function fromLV95(e, n) {
     - 0.002528 * x ** 2
     - 0.0447 * y ** 2 * x
     - 0.0140 * x ** 3;
-  return L.latLng(phi * 100 / 36, lambda * 100 / 36);
+  return { lat: phi * 100 / 36, lng: lambda * 100 / 36 };
 }

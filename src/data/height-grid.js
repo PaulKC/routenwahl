@@ -22,6 +22,24 @@ export function buildHeightGrid(tiles) {
     }
   }
 
+  let slopes = null;
+
+  return {
+    ...createGridGeometry({ west, north, width, height, cellSize }),
+    heights,
+    // Terrain slope in degrees per cell (Horn's 3x3 method), computed on first use.
+    slopes() {
+      slopes ??= computeSlopes(heights, width, height, cellSize);
+      return slopes;
+    },
+  };
+}
+
+// Where the grid's cells are, without the heights. `geometry` is plain data that can be
+// sent to or from a worker and turned back into these helpers.
+export function createGridGeometry(geometry) {
+  const { west, north, width, height, cellSize } = geometry;
+
   // Cell index for a LV95 coordinate, or -1 outside the grid.
   const cellAtLV95 = (e, n) => {
     const col = Math.floor((e - west) / cellSize);
@@ -29,19 +47,12 @@ export function buildHeightGrid(tiles) {
     return col >= 0 && col < width && row >= 0 && row < height ? row * width + col : -1;
   };
 
-  let slopes = null;
-
   return {
+    geometry,
     width,
     height,
     cellSize,
-    heights,
     cellAtLV95,
-    // Terrain slope in degrees per cell (Horn's 3x3 method), computed on first use.
-    slopes() {
-      slopes ??= computeSlopes(heights, width, height, cellSize);
-      return slopes;
-    },
     // Index of the cell containing a WGS84 point, or -1 outside the grid.
     cellAt(latlng) {
       const { e, n } = toLV95(latlng);

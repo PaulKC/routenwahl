@@ -1,11 +1,10 @@
-// Shows the downhill corridor and an example route on the map.
-import { buildHeightGrid } from '../data/height-grid.js';
-import { findDownhillRoutes, REACHABLE, CORRIDOR } from '../routing/downhill.js';
-import { findExposedCells } from '../routing/exposure.js';
-import { findSafestRoute } from '../routing/safest-route.js';
+// Shows the downhill corridor and an example route on the map. The calculation runs in a
+// Web Worker; starting a new one while another is running cancels the old one.
+import { createGridGeometry } from '../data/height-grid.js';
+import { REACHABLE, CORRIDOR } from '../routing/downhill.js';
+import { EXPOSED } from '../routing/compute-route.js';
 import { toLV95 } from '../data/lv95.js';
 
-const EXPOSED = 3; // corridor cell whose fall line runs into a cliff
 const COLORS = {
   [REACHABLE]: [255, 152, 0, 90], // orange: reachable from A, but dead end
   [CORRIDOR]: [46, 125, 50, 150], // green: on some route to B
@@ -13,38 +12,69 @@ const COLORS = {
 };
 const MAX_OVERLAY_PX = 2048;
 
+// showStatus(text, busy) shows a status line; busy is true while a calculation runs.
 export function createRouteLayer(map, showStatus) {
   const group = L.layerGroup().addTo(map);
-  let last = null; // { tiles, grid, start, end } so settings changes can recompute
+  let last = null; // { tiles, start, end, settings } of the current calculation
+  let worker = null;
+  let workerTiles = null; // tiles the worker already has a height grid for
+  let running = null; // id of the calculation in progress, or null
+  let nextId = 1;
+
+  function startWorker() {
+    worker = new Worker(new URL('../routing/route-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = ({ data }) => show(data);
+    worker.onerror = (event) => show({ id: running, error: event.message });
+    workerTiles = null;
+  }
+
+  // Stops a calculation in progress. Terminating is the only way to interrupt the worker.
+  function cancel() {
+    if (running === null) return;
+    worker.terminate();
+    worker = null;
+    running = null;
+  }
 
   function clear() {
+    cancel();
     last = null;
     group.clearLayers();
-    showStatus('');
+    showStatus('', false);
   }
 
   function compute(tiles, start, end, settings) {
-    const grid = last?.tiles === tiles ? last.grid : buildHeightGrid(tiles);
     clear();
-    last = { tiles, grid, start, end };
-    const t0 = performance.now();
-    const a = grid.cellAt(start);
-    const b = grid.cellAt(end);
-    if (a < 0 || b < 0) {
-      showStatus('Route: A oder B liegt ausserhalb der Höhendaten');
-      return null;
-    }
-    const corridor = findDownhillRoutes(grid, a, b, settings);
-    let result = { ...corridor, path: [] };
-    if (!corridor.reason) {
-      const exposed = markExposure(grid, corridor, settings);
-      result = { ...corridor, ...findSafestRoute(grid, a, corridor.zone, settings, exposed) };
-      result.exposedRouteLength = exposedLength(result, exposed);
-    }
-    const ms = Math.round(performance.now() - t0);
+    last = { tiles, start, end, settings };
+    if (!worker) startWorker();
+    running = nextId++;
+    const plain = (ll) => ({ lat: ll.lat, lng: ll.lng });
+    worker.postMessage({
+      id: running,
+      tiles: workerTiles === tiles ? null : tiles.map(({ origin, width, height, resolution, heights }) => ({ origin, width, height, resolution, heights })),
+      start: plain(start),
+      end: plain(end),
+      settings,
+    });
+    workerTiles = tiles;
+    showStatus('Route wird berechnet…', true);
+  }
 
-    drawMask(grid, result.mask);
-    L.circle(end, { radius: settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
+  // Recomputes the last route with new settings, if there is one.
+  function recompute(settings) {
+    if (last) compute(last.tiles, last.start, last.end, settings);
+  }
+
+  function show({ id, result, geometry, error }) {
+    if (id !== running) return; // an older calculation that was replaced
+    running = null;
+    if (error) {
+      showStatus(`Route: Fehler bei der Berechnung (${error})`, false);
+      return;
+    }
+    const grid = createGridGeometry(geometry);
+    if (result.mask) drawMask(grid, result.mask);
+    L.circle(last.end, { radius: last.settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
       .bindTooltip('Zielbereich um B')
       .addTo(group);
     if (result.path.length) {
@@ -52,13 +82,7 @@ export function createRouteLayer(map, showStatus) {
         .bindTooltip('Sicherste Route')
         .addTo(group);
     }
-    showStatus(describe(grid, a, b, result, ms));
-    return result;
-  }
-
-  // Recomputes the last route with new settings, if there is one.
-  function recompute(settings) {
-    if (last) compute(last.tiles, last.start, last.end, settings);
+    showStatus(describe(grid, result), false);
   }
 
   // Paints the mask into a canvas laid out in WGS84 so it lines up with the map.
@@ -109,30 +133,13 @@ export function createRouteLayer(map, showStatus) {
   return { compute, recompute, clear };
 }
 
-// Marks exposed corridor cells in the mask, counts them and returns the exposure mask.
-function markExposure(grid, corridor, settings) {
-  const { mask } = corridor;
-  const exposed = findExposedCells(grid, (cell) => mask[cell] === CORRIDOR, settings);
-  corridor.exposedCells = 0;
-  for (let i = 0; i < mask.length; i += 1) {
-    if (exposed[i]) {
-      mask[i] = EXPOSED;
-      corridor.exposedCells += 1;
-    }
-  }
-  return exposed;
-}
-
-// Approximate exposed length of the route (its share of exposed steps × total length).
-function exposedLength({ path, length }, exposed) {
-  const exposedSteps = path.slice(1).filter((cell) => exposed[cell]).length;
-  return (length * exposedSteps) / Math.max(1, path.length - 1);
-}
-
-function describe(grid, a, b, result, ms) {
-  const hA = Math.round(grid.heights[a]);
-  const hB = Math.round(grid.heights[b]);
+function describe(grid, result) {
+  const hA = Math.round(result.heightA);
+  const hB = Math.round(result.heightB);
+  const { ms } = result;
   switch (result.reason) {
+    case 'outside':
+      return 'Route: A oder B liegt ausserhalb der Höhendaten';
     case 'no-data':
       return 'Route: keine Höhendaten bei A oder B';
     case 'goal-higher':
