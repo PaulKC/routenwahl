@@ -80,7 +80,6 @@ export function createMap(elementId) {
   L.control.scale({ imperial: false }).addTo(map);
   // As controls in the same corner, Leaflet stacks the cards, so opening one pushes the
   // next one down instead of overlapping it.
-  addElementAsControl(map, 'search', 'topright');
   addCardAsControl(map, 'basemap', 'topright');
   addCardAsControl(map, 'legend', 'topright');
   return map;
