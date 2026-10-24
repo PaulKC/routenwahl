@@ -6,15 +6,16 @@ import { loadBulletin, dangerAt } from '../data/avalanche-bulletin.js';
 // Max slope angle per danger level, after the SLF's graphical reduction method (Harvey, Rhyner
 // & Schweizer: Lawinenkunde, 2012; SLF "Achtung Lawinen!"): at 2 avoid slopes over 40°, at 3
 // over 35°, at 4 over 30°. Level 1 has no limit there, so the cliff threshold of 45° is used;
-// at 5 the SLF advises against tours altogether, 25° is only what the map still shows.
+// at 5 the SLF advises against tours altogether. Every level is set 4° below these values to
+// keep a margin (e.g. 31° at 3 instead of 35°).
 // From 3 the steepest part of the whole Hang counts, not just the slope on the track
 // (wholeSlope, see routing/hang.js).
 export const DANGER_LEVELS = [
-  { level: 1, name: 'gering', maxAngle: 45, wholeSlope: false },
-  { level: 2, name: 'mässig', maxAngle: 40, wholeSlope: false },
-  { level: 3, name: 'erheblich', maxAngle: 35, wholeSlope: true },
-  { level: 4, name: 'gross', maxAngle: 30, wholeSlope: true },
-  { level: 5, name: 'sehr gross', maxAngle: 25, wholeSlope: true, warning: 'Das SLF rät bei Stufe 5 von Skitouren ab.' },
+  { level: 1, name: 'gering', maxAngle: 41, wholeSlope: false },
+  { level: 2, name: 'mässig', maxAngle: 36, wholeSlope: false },
+  { level: 3, name: 'erheblich', maxAngle: 31, wholeSlope: true },
+  { level: 4, name: 'gross', maxAngle: 26, wholeSlope: true },
+  { level: 5, name: 'sehr gross', maxAngle: 21, wholeSlope: true, warning: 'Das SLF rät bei Stufe 5 von Skitouren ab.' },
 ];
 
 const SUBDIVISION = { minus: '−', neutral: '=', plus: '+' };
