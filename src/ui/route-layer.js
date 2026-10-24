@@ -12,7 +12,8 @@ const COLORS = {
 };
 const MAX_OVERLAY_PX = 2048;
 
-// showStatus(text, busy) shows a status line; busy is true while a calculation runs.
+// showStatus(text, progress) shows a status line; progress is { label, done, total } while a
+// calculation runs and null otherwise.
 export function createRouteLayer(map, showStatus) {
   const group = L.layerGroup().addTo(map);
   let last = null; // { tiles, start, end, settings } of the current calculation
@@ -40,7 +41,7 @@ export function createRouteLayer(map, showStatus) {
     cancel();
     last = null;
     group.clearLayers();
-    showStatus('', false);
+    showStatus('', null);
   }
 
   function compute(tiles, start, end, settings) {
@@ -57,7 +58,7 @@ export function createRouteLayer(map, showStatus) {
       settings,
     });
     workerTiles = tiles;
-    showStatus('Route wird berechnet…', true);
+    showStatus('Route wird berechnet…', { label: 'Start', done: 0, total: 1 });
   }
 
   // Recomputes the last route with new settings, if there is one.
@@ -65,11 +66,15 @@ export function createRouteLayer(map, showStatus) {
     if (last) compute(last.tiles, last.start, last.end, settings);
   }
 
-  function show({ id, result, geometry, error }) {
+  function show({ id, progress, result, geometry, error }) {
     if (id !== running) return; // an older calculation that was replaced
+    if (progress) {
+      showStatus(`Route wird berechnet: ${progress.label}`, progress);
+      return;
+    }
     running = null;
     if (error) {
-      showStatus(`Route: Fehler bei der Berechnung (${error})`, false);
+      showStatus(`Route: Fehler bei der Berechnung (${error})`, null);
       return;
     }
     const grid = createGridGeometry(geometry);
@@ -82,7 +87,7 @@ export function createRouteLayer(map, showStatus) {
         .bindTooltip('Sicherste Route')
         .addTo(group);
     }
-    showStatus(describe(grid, result), false);
+    showStatus(describe(grid, result), null);
   }
 
   // Paints the mask into a canvas laid out in WGS84 so it lines up with the map.

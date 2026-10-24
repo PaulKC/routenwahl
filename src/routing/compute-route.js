@@ -2,21 +2,27 @@
 // route worker (see route-worker.js), so it must not touch the page or Leaflet.
 import { findDownhillRoutes, CORRIDOR } from './downhill.js';
 import { findExposedCells } from './exposure.js';
-import { findSafestRoute } from './safest-route.js';
+import { findSafestRoute, angleSearchRounds } from './safest-route.js';
 
 export const EXPOSED = 3; // mask value: corridor cell whose fall line runs into a cliff
 
-export function computeRoute(grid, start, end, settings) {
+// Number of steps computeRoute reports through onStep (if a route is found).
+export const routeSteps = (settings) => 2 + 1 + angleSearchRounds(settings.maxAngle) + 1;
+
+// onStep(label) is called before each step, so the page can show progress.
+export function computeRoute(grid, start, end, settings, onStep = () => {}) {
   const t0 = performance.now();
   const a = grid.cellAt(start);
   const b = grid.cellAt(end);
   if (a < 0 || b < 0) return { reason: 'outside', path: [] };
 
+  onStep('Korridor');
   const corridor = findDownhillRoutes(grid, a, b, settings);
   let result = { ...corridor, path: [] };
   if (!corridor.reason) {
+    onStep('Exponierte Stellen');
     const exposed = markExposure(grid, corridor, settings);
-    result = { ...corridor, ...findSafestRoute(grid, a, corridor.zone, settings, exposed) };
+    result = { ...corridor, ...findSafestRoute(grid, a, corridor.zone, settings, exposed, onStep) };
     result.exposedRouteLength = exposedLength(result, exposed);
   }
   delete result.zone;

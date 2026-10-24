@@ -153,6 +153,11 @@ body,
   animation: spin 0.8s linear infinite;
 }
 
+#route-progress {
+  width: 100%;
+  height: 8px;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

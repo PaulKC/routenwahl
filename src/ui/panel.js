@@ -63,9 +63,14 @@ export function createPanel({ onReset, onSettingsChange }) {
     showElevationStatus(text) {
       el('elevation-status').textContent = text;
     },
-    showRouteStatus(text, busy = false) {
+    showRouteStatus(text, progress = null) {
       el('route-status').textContent = text;
-      el('route-status').classList.toggle('busy', busy);
+      el('route-status').classList.toggle('busy', Boolean(progress));
+      el('route-progress').hidden = !progress;
+      if (progress) {
+        el('route-progress').max = progress.total;
+        el('route-progress').value = progress.done;
+      }
     },
   };
 }
