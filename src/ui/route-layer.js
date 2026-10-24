@@ -21,7 +21,8 @@ const hangColor = (label) => {
 const MAX_OVERLAY_PX = 2048;
 const EXACT_EVERY_PX = 16; // overlay pixels between exact projections; the rest is interpolated
 
-// showStatus(text, progress) shows a status line; progress is { label, done, total } while a
+// showStatus(text, progress, details) shows a short status line and, under "Erweitert", the
+// details that explain it; progress is { label, done, total } while a
 // calculation runs and null otherwise.
 export function createRouteLayer(map, showStatus) {
   const group = L.layerGroup().addTo(map);
@@ -86,7 +87,7 @@ export function createRouteLayer(map, showStatus) {
     }
     running = null;
     if (error) {
-      showStatus(`Route: Fehler bei der Berechnung (${error})`, null);
+      showStatus('Route: Fehler bei der Berechnung', null, error);
       return;
     }
     const grid = createGridGeometry(geometry);
@@ -100,7 +101,8 @@ export function createRouteLayer(map, showStatus) {
         .bindTooltip('Sicherste Route')
         .addTo(group);
     }
-    showStatus(describe(grid, result), null);
+    const { summary, details } = describe(grid, result);
+    showStatus(summary, null, details);
   }
 
   // Debug view: colours each Hang and names it and its steepest patch under the cursor.
@@ -179,22 +181,32 @@ export function createRouteLayer(map, showStatus) {
   return { compute, recompute, clear };
 }
 
+// { summary, details }: a short line for the panel and the full explanation for "Erweitert".
 function describe(grid, result) {
   const hA = Math.round(result.heightA);
   const hB = Math.round(result.heightB);
   const { ms } = result;
   switch (result.reason) {
     case 'outside':
-      return 'Route: A oder B liegt ausserhalb der Höhendaten';
+      return { summary: 'Keine Höhendaten für Start oder Ziel', details: 'A oder B liegt ausserhalb der Höhendaten.' };
     case 'no-data':
-      return 'Route: keine Höhendaten bei A oder B';
+      return { summary: 'Keine Höhendaten für Start oder Ziel', details: 'Keine Höhendaten bei A oder B.' };
     case 'goal-higher':
-      return `Route: der Zielbereich um B (${hB} m) liegt nicht tiefer als A (${hA} m)`;
+      return {
+        summary: 'Keine Route: das Ziel liegt nicht tiefer als der Start',
+        details: `Der Zielbereich um B (${hB} m) liegt nicht tiefer als A (${hA} m).`,
+      };
     case 'goal-steep':
-      return `Route: der ganze Zielbereich um B ist steiler als die erlaubte Neigung (B: ${Math.round(result.goalSlope)}°)`;
+      return {
+        summary: 'Keine Route: das Ziel ist zu steil',
+        details: `Der ganze Zielbereich um B ist steiler als die erlaubte Neigung (B: ${Math.round(result.goalSlope)}°).`,
+      };
     case 'blocked':
-      return `Route: kein fahrbarer Weg von A (${hA} m) in den Zielbereich um B (${hB} m). Orange = von A aus erreichbar.`
-        + (result.hangTooSteepCells ? ' Rot = für sich fahrbar, aber der Hang ist zu steil.' : '');
+      return {
+        summary: 'Keine fahrbare Route',
+        details: `Kein fahrbarer Weg von A (${hA} m) in den Zielbereich um B (${hB} m). Orange = von A aus erreichbar.`
+          + (result.hangTooSteepCells ? ' Rot = für sich fahrbar, aber der Hang ist zu steil.' : ''),
+      };
     default: {
       const km = (result.length / 1000).toFixed(2);
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
@@ -205,8 +217,11 @@ function describe(grid, result) {
       const exposure = result.avoidsExposure
         ? 'meidet exponierte Stellen'
         : `nicht vermeidbar: ${Math.round(result.exposedRouteLength)} m exponiert`;
-      return `Route: Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route (${exposure}): steilste Stelle ${steepest}°${hang}, `
-        + `${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`;
+      return {
+        summary: `Route: ${km} km, ${Math.round(result.descent)} Hm`,
+        details: `Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route (${exposure}): steilste Stelle ${steepest}°${hang}, `
+          + `${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`,
+      };
     }
   }
 }

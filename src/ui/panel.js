@@ -101,8 +101,9 @@ export function createPanel({ onReset, onSettingsChange }) {
     showElevationStatus(text) {
       el('elevation-status').textContent = text;
     },
-    showRouteStatus(text, progress = null) {
+    showRouteStatus(text, progress = null, details = '') {
       el('route-status').textContent = text;
+      el('route-details').textContent = details;
       el('route-status').classList.toggle('busy', Boolean(progress));
       el('route-progress').hidden = !progress;
       if (progress) {

@@ -39,6 +39,7 @@ body,
 
 #elevation-status:empty,
 #route-status:empty,
+#route-details:empty,
 #danger-warning:empty {
   display: none;
 }
@@ -137,6 +138,11 @@ body,
 #danger-warning {
   color: #c62828;
   font-weight: 600;
+  font-size: 12px;
+}
+
+#route-details {
+  color: #444;
   font-size: 12px;
 }
 
