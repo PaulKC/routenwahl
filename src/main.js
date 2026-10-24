@@ -3,8 +3,10 @@ import { createPointPicker } from './ui/points.js';
 import { createPanel } from './ui/panel.js';
 import { createElevationLayer } from './ui/elevation-layer.js';
 import { createRouteLayer } from './ui/route-layer.js';
+import { createSearch } from './ui/search.js';
 
 const map = createMap('map');
+createSearch(map);
 
 const panel = createPanel({
   onReset: () => {

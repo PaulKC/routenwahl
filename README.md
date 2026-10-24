@@ -23,7 +23,8 @@ Supported regions (src/data/regions.js), each in its own metric grid via proj4:
   so it would need a small proxy server.
 Regions overlap at borders; the route uses the first region (finest data first) that
 has data at both A and B. The base map follows the region in view until the user
-picks one.
+picks one. The top-right corner holds a place search (OpenStreetMap Nominatim, on Enter)
+and the base-map picker and legend as cards that open and close on a click.
 It then finds every route from A to B on the 2 m grid that a skier can ride while
 carrying speed: speed is tracked as energy (v^2/2g), gained by losing height, lost to
 friction, capped at a max speed (default friction 0.07, 20 km/h). Snow presets set the

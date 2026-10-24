@@ -80,6 +80,7 @@ export function createMap(elementId) {
   L.control.scale({ imperial: false }).addTo(map);
   // As controls in the same corner, Leaflet stacks the cards, so opening one pushes the
   // next one down instead of overlapping it.
+  addElementAsControl(map, 'search', 'topright');
   addCardAsControl(map, 'basemap', 'topright');
   addCardAsControl(map, 'legend', 'topright');
   return map;
@@ -92,15 +93,17 @@ function sameRegion(baseLayers, a, b) {
 }
 
 // A <details> card shown as a map control; whether it is open is remembered across reloads.
+// On a phone the cards start closed, since open they reach down behind the panel.
 function addCardAsControl(map, elementId, position) {
   const element = document.getElementById(elementId);
   const key = `skitour.card.${elementId}`;
+  let saved = null;
   try {
-    const saved = localStorage.getItem(key);
-    if (saved !== null) element.open = saved === 'open';
+    saved = localStorage.getItem(key);
   } catch {
-    // storage unavailable: keep the default from index.html
+    // storage unavailable: fall back to the default
   }
+  element.open = saved === null ? !window.matchMedia('(max-width: 600px)').matches : saved === 'open';
   element.addEventListener('toggle', () => {
     try {
       localStorage.setItem(key, element.open ? 'open' : 'closed');
@@ -108,6 +111,11 @@ function addCardAsControl(map, elementId, position) {
       // storage unavailable (e.g. private mode); the state just won't be remembered
     }
   });
+  addElementAsControl(map, elementId, position);
+}
+
+function addElementAsControl(map, elementId, position) {
+  const element = document.getElementById(elementId);
   const control = L.control({ position });
   control.onAdd = () => {
     element.classList.add('leaflet-control');

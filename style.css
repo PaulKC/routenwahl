@@ -49,7 +49,7 @@ body,
   font-size: 11px;
 }
 
-/* The base-map picker and the legend share this look: a white card in the top-right corner,
+/* The place search, the base-map picker and the legend share this look: a white card in the top-right corner,
    opened and closed by clicking its title. */
 .map-card {
   box-sizing: border-box;
@@ -68,9 +68,56 @@ body,
 }
 
 /* Long contents scroll inside the card instead of running into the panel below. */
-.map-card > :not(summary) {
+details.map-card > :not(summary) {
   max-height: 40vh;
   overflow-y: auto;
+}
+
+#search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+#search input {
+  min-width: 0;
+  font: inherit;
+}
+
+#search-results {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#search-results[hidden] {
+  display: none;
+}
+
+#search-results button {
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#search-results button:hover,
+#search-results button.current {
+  background: #e3f2fd;
+}
+
+#search-results .note {
+  padding: 4px 6px;
+  color: #555;
 }
 
 /* Leaflet's layer switcher, moved into the card: drop its own box so only the card's shows. */

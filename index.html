@@ -38,6 +38,11 @@
     <button id="reset" type="button">Zurücksetzen</button>
     <button id="clear-cache" type="button">Höhendaten-Cache leeren</button>
   </div>
+  <form id="search" class="map-card" role="search">
+    <input id="search-input" type="search" placeholder="Ort suchen…" aria-label="Ort suchen" autocomplete="off">
+    <button type="submit">Suchen</button>
+    <ul id="search-results" hidden></ul>
+  </form>
   <details id="basemap" class="map-card" open>
     <summary>Karte</summary>
   </details>
