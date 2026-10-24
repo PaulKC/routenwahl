@@ -1,9 +1,11 @@
 // Start and end point: first click sets the start, second the end. Both can be dragged.
-const pinIcon = (kind, label) => L.divIcon({
+// The pin's tip (its turned corner) sits at the point: half the box below the centre × √2.
+const PIN_SIZE = 26; // must match --size of .pin in style.css
+const pinIcon = (kind) => L.divIcon({
   className: '',
-  html: `<span class="pin ${kind}">${label}</span>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
+  html: `<span class="pin ${kind}"></span>`,
+  iconSize: [PIN_SIZE, PIN_SIZE],
+  iconAnchor: [PIN_SIZE / 2, PIN_SIZE / 2 * (1 + Math.SQRT2)],
 });
 
 // onMove fires while points change; onSet fires once both are placed and after each drag.
@@ -24,7 +26,7 @@ export function createPointPicker(map, { onMove, onSet }) {
 
   function place(kind, latlng) {
     const marker = L.marker(latlng, {
-      icon: pinIcon(kind, kind === 'start' ? 'A' : 'B'),
+      icon: pinIcon(kind),
       draggable: true,
     }).addTo(map);
     marker.on('drag', moved);

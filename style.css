@@ -52,10 +52,8 @@ body,
 }
 
 .points .pin {
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
-  vertical-align: -4px;
+  --size: 14px;
+  margin: 0 4px 0 2px;
 }
 
 /* Avalanche danger: "SLF aktuell" and the five levels in the European danger scale colours. */
@@ -327,9 +325,8 @@ details.map-card > :not(summary) {
 }
 
 #legend .pin {
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
+  --size: 14px;
+  margin: 0 2px;
 }
 
 .swatch {
@@ -425,17 +422,29 @@ details.map-card > :not(summary) {
   font-weight: 600;
 }
 
+/* Start and finish as map pins: a square with three round corners turned by 45° so the sharp
+   corner points down at the spot. Start has a white dot, the finish a white square ("stop").
+   The tip lies --size × 1.21 below the top of the box (see pinIcon in src/ui/points.js). */
 .pin {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 2px solid white;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-  color: white;
-  font: 700 12px system-ui, sans-serif;
+  --size: 26px;
+  display: inline-block;
+  position: relative;
   box-sizing: border-box;
+  width: var(--size);
+  height: var(--size);
+  border: 2px solid white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: -1px 1px 4px rgba(0, 0, 0, 0.35);
+  vertical-align: middle;
+}
+
+.pin::after {
+  content: '';
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+  background: white;
 }
 
 .pin.start {
@@ -444,4 +453,9 @@ details.map-card > :not(summary) {
 
 .pin.end {
   background: #c62828;
+}
+
+.pin.end::after {
+  border-radius: 2px;
+  transform: rotate(45deg); /* upright again inside the turned pin */
 }
