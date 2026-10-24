@@ -71,11 +71,17 @@ export function createMap(elementId) {
     }
   });
 
-  L.control.layers(baseLayers, overlays).addTo(map);
+  // The layer switcher goes inside the "Karte" card so it opens and closes like the legend
+  // (click on the title) instead of Leaflet's hover-to-expand icon, which is fiddly on a phone.
+  const layers = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
+  const layersContainer = layers.getContainer();
+  layersContainer.classList.remove('leaflet-control'); // the card is the control now
+  document.getElementById('basemap').append(layersContainer);
   L.control.scale({ imperial: false }).addTo(map);
-  // As a control in the same corner, Leaflet stacks the legend below the layer switcher,
-  // so it moves down instead of overlapping when the switcher opens.
-  addElementAsControl(map, 'legend', 'topright');
+  // As controls in the same corner, Leaflet stacks the cards, so opening one pushes the
+  // next one down instead of overlapping it.
+  addCardAsControl(map, 'basemap', 'topright');
+  addCardAsControl(map, 'legend', 'topright');
   return map;
 }
 
@@ -85,8 +91,23 @@ function sameRegion(baseLayers, a, b) {
   return swiss.includes(a) && swiss.includes(b);
 }
 
-function addElementAsControl(map, elementId, position) {
+// A <details> card shown as a map control; whether it is open is remembered across reloads.
+function addCardAsControl(map, elementId, position) {
   const element = document.getElementById(elementId);
+  const key = `skitour.card.${elementId}`;
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved !== null) element.open = saved === 'open';
+  } catch {
+    // storage unavailable: keep the default from index.html
+  }
+  element.addEventListener('toggle', () => {
+    try {
+      localStorage.setItem(key, element.open ? 'open' : 'closed');
+    } catch {
+      // storage unavailable (e.g. private mode); the state just won't be remembered
+    }
+  });
   const control = L.control({ position });
   control.onAdd = () => {
     element.classList.add('leaflet-control');
