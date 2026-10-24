@@ -16,8 +16,25 @@ export function createPanel({ onReset, onSettingsChange }) {
     fallDistance: Math.max(0, Number(el('fall-distance').value) || 0),
     minFallHeight: Math.max(0, Number(el('min-fall-height').value) || 0),
   });
+  // Snow presets set the friction input; the angle below which skis stop gliding is atan(friction).
+  const showFriction = () => {
+    const friction = Math.max(0, Number(el('friction').value) || 0);
+    el('glide-angle').textContent = (Math.atan(friction) * 180 / Math.PI).toFixed(1);
+    const preset = [...el('snow-preset').options].find((o) => o.value && Number(o.value) === friction);
+    el('snow-preset').value = preset ? preset.value : '';
+  };
+  el('friction').addEventListener('input', showFriction);
+  el('snow-preset').addEventListener('change', () => {
+    el('friction').value = el('snow-preset').value;
+    el('friction').dispatchEvent(new Event('change'));
+  });
+  showFriction();
+
   for (const id of ['max-angle', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
-    el(id).addEventListener('change', () => onSettingsChange(settings()));
+    el(id).addEventListener('change', () => {
+      showFriction();
+      onSettingsChange(settings());
+    });
   }
 
   const refreshCacheInfo = async () => {

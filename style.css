@@ -35,6 +35,20 @@ body,
   width: 4.5em;
 }
 
+.friction-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  flex-basis: 100%;
+}
+
+.friction-row .source {
+  flex-basis: 100%;
+  color: #555;
+  font-size: 11px;
+}
+
 /* Colours must match COLORS in src/route-layer.js and the styles in src/elevation-layer.js. */
 #legend {
   padding: 8px 10px;

@@ -11,7 +11,10 @@ downloads the swissALTI3D 2 m elevation GeoTIFFs covering A–B plus 1.5 km marg
 from the swisstopo STAC API (data.geo.admin.ch) and outlines them on the map.
 It then finds every route from A to B on the 2 m grid that a skier can ride while
 carrying speed: speed is tracked as energy (v^2/2g), gained by losing height, lost to
-friction, capped at a max speed (default friction 0.07, 20 km/h). Cells whose
+friction, capped at a max speed (default friction 0.07, 20 km/h). Snow presets set the
+friction (hard/frozen spring snow 0.03, typical 0.07, wet new snow 0.14; measured values from
+Wolfsperger, Meyer & Gilgien 2021, doi:10.3389/fmech.2021.728722) and the panel shows the
+minimum gliding slope atan(friction). Cells whose
 terrain slope is steeper than the max angle (default 30°) are excluded. B is a target
 zone (default radius 25 m): arriving anywhere inside it counts.
 Exposed corridor cells are shown in purple: following the fall line from there for
