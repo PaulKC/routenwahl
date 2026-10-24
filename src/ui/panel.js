@@ -1,5 +1,7 @@
-// The info panel in the bottom left corner.
+// The info panel in the bottom left corner: the avalanche danger up top, the detailed
+// parameters folded away under "Erweitert".
 import { countStoredTiles, clearStoredTiles } from '../data/tile-store.js';
+import { createDangerPicker } from './danger.js';
 
 const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
 
@@ -16,6 +18,17 @@ export function createPanel({ onReset, onSettingsChange }) {
     fallDistance: Math.max(0, Number(el('fall-distance').value) || 0),
     minFallHeight: Math.max(0, Number(el('min-fall-height').value) || 0),
   });
+
+  // The danger level sets the max angle; typing an angle by hand overrides the level.
+  const danger = createDangerPicker({
+    onChange: (angle) => {
+      el('max-angle').value = angle;
+      onSettingsChange(settings());
+    },
+  });
+  el('max-angle').value = danger.maxAngle();
+  el('max-angle').addEventListener('change', () => danger.setCustom(settings().maxAngle));
+
   // Snow presets set the friction input; the angle below which skis stop gliding is atan(friction).
   const showFriction = () => {
     const friction = Math.max(0, Number(el('friction').value) || 0);
@@ -51,6 +64,7 @@ export function createPanel({ onReset, onSettingsChange }) {
   return {
     settings,
     refreshCacheInfo,
+    showDangerFor: danger.setLocation,
     showPoints(start, end) {
       el('start-coords').textContent = start ? formatLatLng(start) : '–';
       el('end-coords').textContent = end ? formatLatLng(end) : '–';

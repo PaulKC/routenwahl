@@ -13,6 +13,7 @@ const panel = createPanel({
     picker.reset();
     elevation.cancel();
     routes.clear();
+    showDanger();
   },
   onSettingsChange: (settings) => routes.recompute(settings),
 });
@@ -32,10 +33,22 @@ async function findRoutes(start, end) {
 
 const picker = createPointPicker(map, {
   onMove: panel.showPoints,
-  onSet: findRoutes,
+  onSet: (start, end) => {
+    showDanger();
+    findRoutes(start, end);
+  },
 });
 
+// The avalanche danger is looked up for A and B once set, before that for the map centre.
+function showDanger() {
+  const { start, end } = picker.latLngs();
+  const points = [start, end].filter(Boolean);
+  panel.showDangerFor(points.length ? points : [map.getCenter()]);
+}
+map.on('moveend click', showDanger);
+
 panel.showPoints(null, null);
+showDanger();
 
 // Handy for debugging in the browser console.
 window.app = { map, picker, elevation, routes };

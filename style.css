@@ -10,19 +10,155 @@ body,
   bottom: 24px;
   left: 10px;
   z-index: 1000;
-  max-width: min(420px, calc(100vw - 44px));
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 20px));
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   display: grid;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 14px 16px;
   background: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-  font: 14px/1.3 system-ui, sans-serif;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  font: 14px/1.35 system-ui, sans-serif;
+}
+
+#panel button {
+  font: inherit;
+}
+
+#reset,
+#clear-cache {
+  justify-self: start;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f6f6f6;
+  cursor: pointer;
 }
 
 #elevation-status:empty,
-#route-status:empty {
+#route-status:empty,
+#danger-info:empty,
+#danger-warning:empty {
   display: none;
+}
+
+.points {
+  display: flex;
+  gap: 16px;
+  color: #444;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.points .pin {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  vertical-align: -4px;
+}
+
+/* Avalanche danger: "SLF aktuell" and the five levels in the European danger scale colours. */
+.danger {
+  display: grid;
+  gap: 6px;
+}
+
+.danger-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+#danger-angle {
+  color: #0d47a1;
+}
+
+#danger-levels {
+  display: grid;
+  padding-top: 4px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+#danger-levels button {
+  height: 36px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #eee;
+  color: #222;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#danger-levels button[aria-checked="true"] {
+  border-color: #0d47a1;
+  box-shadow: 0 0 0 2px white inset;
+}
+
+/* The level from the SLF bulletin carries a small tag. */
+#danger-levels button {
+  position: relative;
+}
+
+#danger-levels button.slf::after {
+  content: 'SLF';
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: #0d47a1;
+  color: white;
+  font-size: 9px;
+  line-height: 13px;
+  text-shadow: none;
+}
+
+#danger-levels .level-1 { background: #ccff66; }
+#danger-levels .level-2 { background: #ffff00; }
+#danger-levels .level-3 { background: #ff9900; }
+#danger-levels .level-4 { background: #ff0000; color: white; }
+#danger-levels .level-5 {
+  background: repeating-conic-gradient(#ff0000 0 25%, #000 0 50%) 0 0 / 10px 10px;
+  color: white;
+  text-shadow: 0 0 3px #000;
+}
+
+#danger-info {
+  color: #555;
+  font-size: 12px;
+}
+
+#danger-warning {
+  color: #c62828;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+#advanced summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#advanced[open] {
+  display: grid;
+  gap: 8px;
+}
+
+#advanced[open] summary {
+  margin-bottom: 2px;
+}
+
+.disclaimer {
+  color: #777;
+  font-size: 11px;
+}
+
+.disclaimer a {
+  color: inherit;
 }
 
 .settings {

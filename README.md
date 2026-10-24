@@ -41,6 +41,19 @@ or steeper dropping at least 10 m, with gentler gaps of up to 10 m bridged
 all feasible routes, blue = safest route (avoids exposed cells if possible, otherwise as little exposure as possible; then gentlest steepest point, then gentle and short), orange = reachable from
 A but no way on to B.
 
+## Avalanche danger
+
+The panel's main setting is the avalanche danger level, which sets the max slope angle
+(src/ui/danger.js), after the SLF's graphical reduction method: 1 gering 45° (no limit
+there, so the cliff angle), 2 mässig 40°, 3 erheblich 35°, 4 gross 30°, 5 sehr gross 25° with
+a warning that the SLF advises against tours. By default the level comes from
+the current SLF bulletin (aws.slf.ch, GeoJSON, CC BY 4.0) for A and B, or the map centre before
+they are set; of several ratings (by elevation or time of day) and of A and B the highest
+counts, and its button carries an "SLF" tag; picking another level overrides it, picking the
+tagged one follows the bulletin again. Outside Switzerland, out of season or when the bulletin can't be loaded, the level is
+picked by hand (preselected 3). The other parameters, including a custom max angle, are under
+"Erweitert".
+
 ## Run locally
 
 No build step. Serve the folder with any static server, e.g.:
