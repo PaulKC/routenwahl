@@ -7,7 +7,7 @@ const ELEVATION_MARGIN_M = 1500; // routes that avoid steep terrain often detour
 // load() resolves to the downloaded tiles, or null if it was cancelled or something failed.
 // showStatus(summary, details) shows a short line and, under "Erweitert", the details.
 export function createElevationLayer(map, showStatus) {
-  const tileOutlines = L.layerGroup().addTo(map);
+  const tileOutlines = L.layerGroup(); // shown only with the debug option, see setShowTiles
   let elevationRequest = null;
 
   function cancel() {
@@ -121,5 +121,11 @@ export function createElevationLayer(map, showStatus) {
     return null;
   }
 
-  return { load, cancel };
+  // Debug option: show the tile outlines on the map.
+  function setShowTiles(show) {
+    if (show) tileOutlines.addTo(map);
+    else tileOutlines.remove();
+  }
+
+  return { load, cancel, setShowTiles };
 }

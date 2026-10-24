@@ -64,6 +64,8 @@
           <label title="Weicht die Exposition mehr als so viel vom Hang ab, beginnt ein neuer Hang">Expositionswechsel <input id="aspect-split" type="number" min="0" max="180" step="5" value="60">°</label>
           <label title="Färbt jeden erkannten Hang; die Maus über einem Hang zeigt seine steilste Partie">
             <input id="show-hangs" type="checkbox"> Debug: Hänge anzeigen</label>
+          <label title="Zeigt die Umrisse der Höhendaten-Kacheln auf der Karte und in der Legende">
+            <input id="show-tiles" type="checkbox"> Debug: Höhenkacheln anzeigen</label>
         </div>
         <div class="friction-row" title="Gemessene Ski-Schnee-Reibung: Wolfsperger, Meyer &amp; Gilgien 2021, Frontiers in Mechanical Engineering, doi:10.3389/fmech.2021.728722">
           <label>Reibung <input id="friction" type="number" min="0" max="1" step="0.01" value="0.07"></label>
@@ -101,9 +103,9 @@
       <li><span class="line route"></span> Sicherste Route (möglichst flach)</li>
       <li><span class="line straight"></span> Luftlinie A – B</li>
       <li><span class="ring start"></span><span class="ring goal"></span> Start- und Zielbereich</li>
-      <li><span class="swatch tile loading"></span> Höhenkachel lädt</li>
-      <li><span class="swatch tile loaded"></span> Höhenkachel geladen</li>
-      <li><span class="swatch tile failed"></span> Höhenkachel fehlgeschlagen</li>
+      <li class="debug-tiles"><span class="swatch tile loading"></span> Höhenkachel lädt</li>
+      <li class="debug-tiles"><span class="swatch tile loaded"></span> Höhenkachel geladen</li>
+      <li class="debug-tiles"><span class="swatch tile failed"></span> Höhenkachel fehlgeschlagen</li>
     </ul>
   </details>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

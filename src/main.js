@@ -16,6 +16,7 @@ const panel = createPanel({
     showDanger();
   },
   onSettingsChange: (settings) => routes.recompute(settings),
+  onShowTiles: (show) => elevation.setShowTiles(show),
 });
 
 const elevation = createElevationLayer(map, panel.showElevationStatus);

@@ -5,9 +5,16 @@ import { createDangerPicker } from './danger.js';
 
 const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
 
-export function createPanel({ onReset, onSettingsChange }) {
+export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   const el = (id) => document.getElementById(id);
   el('reset').addEventListener('click', onReset);
+
+  // Debug: tile outlines on the map and their legend entries.
+  el('show-tiles').addEventListener('change', () => {
+    const show = el('show-tiles').checked;
+    document.body.classList.toggle('show-tiles', show);
+    onShowTiles(show);
+  });
 
   const settings = () => ({
     friction: Math.max(0, Number(el('friction').value) || 0),

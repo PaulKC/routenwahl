@@ -359,6 +359,11 @@ details.map-card > :not(summary) {
   background: rgba(229, 57, 53, 0.43);
 }
 
+/* Tile entries only show with "Debug: Höhenkacheln anzeigen". */
+body:not(.show-tiles) #legend .debug-tiles {
+  display: none;
+}
+
 .swatch.tile {
   border: 1px solid;
 }

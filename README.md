@@ -7,7 +7,8 @@ may follow later.
 ## Status
 
 Map page (Leaflet). Click to set start (A) and end (B); the app then downloads 2 m
-elevation GeoTIFFs covering A–B plus 1.5 km margin and outlines them on the map.
+elevation GeoTIFFs covering A–B plus 1.5 km margin (their outlines show with the
+"Debug: Höhenkacheln anzeigen" option).
 Supported regions (src/data/regions.js), each in its own metric grid via proj4:
 - Switzerland: swissALTI3D from the swisstopo STAC API (data.geo.admin.ch), LV95,
   swisstopo maps.
