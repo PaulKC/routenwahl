@@ -46,18 +46,25 @@ export function createPanel({ onReset, onSettingsChange }) {
     });
   }
 
-  // Snow presets set the friction input; the angle below which skis stop gliding is atan(friction).
+  // The snow buttons set the friction input under "Erweitert"; a typed value that matches none
+  // leaves them all unpicked. Skis stop gliding below atan(friction).
+  const snowButtons = [...el('snow-presets').querySelectorAll('button')];
   const showFriction = () => {
     const friction = Math.max(0, Number(el('friction').value) || 0);
-    el('glide-angle').textContent = (Math.atan(friction) * 180 / Math.PI).toFixed(1);
-    const preset = [...el('snow-preset').options].find((o) => o.value && Number(o.value) === friction);
-    el('snow-preset').value = preset ? preset.value : '';
+    const glide = (Math.atan(friction) * 180 / Math.PI).toFixed(1);
+    el('glide-angle').textContent = glide;
+    el('snow-glide').textContent = `gleitet ab ${glide}°`;
+    for (const button of snowButtons) {
+      button.setAttribute('aria-checked', String(Number(button.dataset.friction) === friction));
+    }
   };
   el('friction').addEventListener('input', showFriction);
-  el('snow-preset').addEventListener('change', () => {
-    el('friction').value = el('snow-preset').value;
-    el('friction').dispatchEvent(new Event('change'));
-  });
+  for (const button of snowButtons) {
+    button.addEventListener('click', () => {
+      el('friction').value = button.dataset.friction;
+      el('friction').dispatchEvent(new Event('change'));
+    });
+  }
   showFriction();
 
   for (const id of ['max-angle', 'whole-slope', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
