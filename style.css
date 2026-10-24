@@ -39,7 +39,6 @@ body,
 
 #elevation-status:empty,
 #route-status:empty,
-#danger-info:empty,
 #danger-warning:empty {
   display: none;
 }
@@ -81,10 +80,6 @@ body,
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
-}
-
-#snow-presets button {
-  background: #e3f2fd;
 }
 
 #danger-levels {
@@ -139,11 +134,6 @@ body,
   background: repeating-conic-gradient(#ff0000 0 25%, #000 0 50%) 0 0 / 10px 10px;
   color: white;
   text-shadow: 0 0 3px #000;
-}
-
-#danger-info {
-  color: #555;
-  font-size: 12px;
 }
 
 #danger-warning {

@@ -44,7 +44,8 @@ export function createDangerPicker({ onChange }) {
     }
     const info = DANGER_LEVELS.find((d) => d.level === level);
     el('danger-angle').textContent = applied ? `max. ${applied.maxAngle}°${applied.wholeSlope ? ' im ganzen Hang' : ''}` : '';
-    el('danger-info').textContent = describe(info);
+    // No text line under the buttons; the source of the level is the buttons' tooltip.
+    el('danger-levels').title = describe(info);
     el('danger-warning').textContent = info?.warning ?? '';
   }
 
