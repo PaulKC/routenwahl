@@ -1,8 +1,7 @@
-// One full route calculation: corridor, exposure and the safest route. Runs in the
+// One full route calculation: the corridor and its exposed cells. Runs in the
 // route worker (see route-worker.js), so it must not touch the page or Leaflet.
 import { findDownhillRoutes, cellsWithin, CORRIDOR } from './downhill.js';
 import { findExposedCells } from './exposure.js';
-import { findSafestRoute, angleSearchRounds } from './safest-route.js';
 import { findHangs } from './hang.js';
 import { coreZoneMask } from './core-zone.js';
 import { noGoMask } from './no-go.js';
@@ -11,14 +10,14 @@ import { wholeSlopeAnywhere } from './energy-model.js';
 export const EXPOSED = 3; // mask value: corridor cell whose fall line runs into a cliff
 
 // Number of steps computeRoute reports through onStep (if a route is found).
-export const routeSteps = (settings) => (wholeSlopeAnywhere(settings) || settings.showHangs ? 1 : 0) + 2 + 1 + angleSearchRounds(settings) + 1;
+export const routeSteps = (settings) => (wholeSlopeAnywhere(settings) || settings.showHangs ? 1 : 0) + 2;
 
 // onStep(label) is called before each step, so the page can show progress.
 export function computeRoute(grid, start, end, settings, onStep = () => {}) {
   const t0 = performance.now();
   const a = grid.cellAt(start);
   const b = grid.cellAt(end);
-  if (a < 0 || b < 0) return { reason: 'outside', path: [] };
+  if (a < 0 || b < 0) return { reason: 'outside' };
 
   let hangs = null;
   if (wholeSlopeAnywhere(settings) || settings.showHangs) {
@@ -29,13 +28,11 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
   const starts = [a, ...cellsWithin(grid, a, settings.goalRadius).filter((cell) => cell !== a)];
   onStep('Korridor');
   const corridor = findDownhillRoutes(grid, starts, b, settings);
-  let result = { ...corridor, path: [] };
   if (!corridor.reason) {
     onStep('Exponierte Stellen');
-    const exposed = markExposure(grid, corridor, settings);
-    result = { ...corridor, ...findSafestRoute(grid, starts, corridor.zone, settings, exposed, onStep) };
-    result.exposedRouteLength = exposedLength(result, exposed);
+    markExposure(grid, corridor, settings);
   }
+  const result = { ...corridor };
   delete result.zone;
   result.startInNoGo = Boolean(settings.noGo?.length) && noGoMask(grid, settings.noGo)[a] === 1;
   if (settings.showHangs) {
@@ -50,7 +47,7 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
   return result;
 }
 
-// Marks exposed corridor cells in the mask, counts them and returns the exposure mask.
+// Marks exposed corridor cells in the mask and counts them.
 function markExposure(grid, corridor, settings) {
   const { mask } = corridor;
   const exposed = findExposedCells(grid, (cell) => mask[cell] === CORRIDOR, settings);
@@ -61,11 +58,4 @@ function markExposure(grid, corridor, settings) {
       corridor.exposedCells += 1;
     }
   }
-  return exposed;
-}
-
-// Approximate exposed length of the route (its share of exposed steps × total length).
-function exposedLength({ path, length }, exposed) {
-  const exposedSteps = path.slice(1).filter((cell) => exposed[cell]).length;
-  return (length * exposedSteps) / Math.max(1, path.length - 1);
 }

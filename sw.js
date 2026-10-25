@@ -14,8 +14,8 @@ const APP_FILES = [
   'src/data/avalanche-bulletin.js', 'src/data/elevation-data.js', 'src/data/height-grid.js',
   'src/data/projection.js', 'src/data/regions.js', 'src/data/tile-store.js', 'src/data/wildlife-zones.js',
   'src/routing/compute-route.js', 'src/routing/core-zone.js', 'src/routing/downhill.js', 'src/routing/energy-model.js',
-  'src/routing/exposure.js', 'src/routing/hang.js', 'src/routing/min-heap.js', 'src/routing/no-go.js',
-  'src/routing/route-worker.js', 'src/routing/safest-route.js',
+  'src/routing/exposure.js', 'src/routing/hang.js', 'src/routing/no-go.js',
+  'src/routing/route-worker.js',
   'src/ui/danger.js', 'src/ui/elevation-layer.js', 'src/ui/map.js', 'src/ui/panel.js',
   'src/ui/points.js', 'src/ui/route-layer.js', 'src/ui/search.js', 'src/ui/zone-picker.js', 'src/ui/wildlife-layer.js',
 ];

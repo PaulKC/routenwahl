@@ -8,7 +8,6 @@
 //   1. forward from A:  the most energy the skier can arrive with at each cell,
 //   2. backward from B: the least energy needed at each cell to still make it into B's zone.
 // A cell lies on some feasible route ("the corridor") when 1. is at least 2.
-// The caller picks an example route through it (see safest-route.js).
 import {
   EPSILON, createTerrain, findMaxArrivalEnergy, findMinEnergyNeeded, wholeSlopeAnywhere, withoutWholeSlope,
 } from './energy-model.js';

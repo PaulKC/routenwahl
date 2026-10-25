@@ -101,7 +101,6 @@ export function createRouteLayer(map, showStatus) {
     L.circle(last.end, { radius: last.settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
       .bindTooltip('Zielbereich')
       .addTo(group);
-    // The safest route is still computed for the figures in the status, but not drawn.
     const { summary, details } = describe(grid, result);
     showStatus(summary, null, details);
   }
@@ -220,19 +219,11 @@ function describe(grid, result) {
           + (result.hangTooSteepCells ? ' Rot = für sich fahrbar, aber der Hang ist zu steil.' : ''),
       };
     default: {
-      const km = (result.length / 1000).toFixed(2);
       const ha = (result.corridorCells * grid.cellSize ** 2 / 10000).toFixed(1);
-      const speed = Math.round(result.arrivalSpeedKmh);
-      const steepest = Math.round(result.maxSlope);
-      const hang = result.maxHangSlope === null ? '' : `, steilster Hang ${Math.round(result.maxHangSlope)}°`;
       const exposedHa = (result.exposedCells * grid.cellSize ** 2 / 10000).toFixed(1);
-      const exposure = result.avoidsExposure
-        ? 'meidet exponierte Stellen'
-        : `nicht vermeidbar: ${Math.round(result.exposedRouteLength)} m exponiert`;
       return {
-        summary: `Route: ${km} km, ${Math.round(result.descent)} Hm`,
-        details: `Korridor ${ha} ha, davon ${exposedHa} ha exponiert. Sicherste Route (${exposure}): steilste Stelle ${steepest}°${hang}, `
-          + `${km} km, ${Math.round(result.descent)} Hm, Ankunft mit ${speed} km/h (${ms} ms)`,
+        summary: `Fahrbar: ${Math.round(hA - hB)} Hm${result.exposedCells ? ', teils exponiert' : ''}`,
+        details: `Korridor ${ha} ha, davon ${exposedHa} ha exponiert, von A (${hA} m) nach B (${hB} m) (${ms} ms)`,
       };
     }
   }

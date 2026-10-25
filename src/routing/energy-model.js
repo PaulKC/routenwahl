@@ -5,11 +5,10 @@
 //   - is capped at the max speed,
 // and is only allowed if the energy stays at or above zero. So flat or slightly uphill
 // bits are fine as long as the skier arrives with enough speed. Cells whose terrain is
-// steeper than maxAngle, or marked in the optional `blocked` mask, are off limits (only A
-// itself may be either). With `wholeSlope` set, a cell counts as steep as the steepest part
+// steeper than maxAngle are off limits (only A itself may be). With `wholeSlope` set, a cell counts as steep as the steepest part
 // of its Hang (see hang.js) instead of its own slope. With a core zone (see core-zone.js),
 // maxAngle and wholeSlope hold inside it and zone.outsideMaxAngle and outsideWholeSlope
-// elsewhere. angleCap lowers the limit everywhere (for the search in safest-route.js).
+// elsewhere.
 // Cells in settings.noGo (wildlife rest zones, see no-go.js) are off limits too.
 import { hangSlopes } from './hang.js';
 import { coreZoneMask } from './core-zone.js';
@@ -20,11 +19,9 @@ export const EPSILON = 1e-3; // ignore improvements smaller than 1 mm of energy
 const UNREACHABLE = -1;
 
 export const speedToEnergy = (kmh) => (kmh / 3.6) ** 2 / (2 * G);
-export const energyToSpeed = (energy) => Math.sqrt(2 * G * energy) * 3.6;
 
-// Whether the whole-slope rule holds anywhere, and the highest max angle of any cell.
+// Whether the whole-slope rule holds anywhere.
 export const wholeSlopeAnywhere = (settings) => settings.wholeSlope || Boolean(settings.zone?.outsideWholeSlope);
-export const topMaxAngle = (settings) => Math.max(settings.maxAngle, settings.zone?.outsideMaxAngle ?? 0);
 export const withoutWholeSlope = (settings) => ({
   ...settings, wholeSlope: false, zone: settings.zone && { ...settings.zone, outsideWholeSlope: false },
 });
@@ -59,11 +56,10 @@ function cellLimits(grid, settings) {
 
 // Grid plus the rules of the energy model.
 export function createTerrain(grid, settings) {
-  const { friction, maxSpeedKmh, maxAngle, angleCap = Infinity, blocked = null } = settings;
+  const { friction, maxSpeedKmh, maxAngle } = settings;
   const { width, height, heights, cellSize } = grid;
   const slopes = grid.slopes();
   const { limitSlopes, maxAngles, noGoCells } = cellLimits(grid, settings);
-  const limit = Math.min(maxAngle, angleCap);
   const stepLength = [cellSize, cellSize * Math.SQRT2]; // [straight, diagonal]
   const frictionLoss = [friction * cellSize, friction * cellSize * Math.SQRT2];
 
@@ -80,8 +76,8 @@ export function createTerrain(grid, settings) {
 
     // false for NaN (no data)
     isSkiable: maxAngles
-      ? (cell) => limitSlopes[cell] <= Math.min(maxAngles[cell], angleCap) && !blocked?.[cell]
-      : (cell) => limitSlopes[cell] <= limit && !blocked?.[cell],
+      ? (cell) => limitSlopes[cell] <= maxAngles[cell]
+      : (cell) => limitSlopes[cell] <= maxAngle,
 
     // Calls visit(neighbour, diagonal) for each of the up to 8 neighbours; diagonal is 0 or 1.
     forEachNeighbour(cell, visit) {
