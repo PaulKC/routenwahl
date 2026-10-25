@@ -44,16 +44,7 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     const zone = el('core-zone').hidden ? null : zonePicker.value();
     return zone && { ...zone, outsideMaxAngle: angleOf('outside-max-angle'), outsideWholeSlope: el('outside-whole-slope').checked };
   };
-  const showZoneOutside = () => {
-    const zone = zoneSettings();
-    el('zone-outside').textContent = zone
-      ? `sonst max. ${zone.outsideMaxAngle}°${zone.outsideWholeSlope ? ' im ganzen Hang' : ''}`
-      : 'gilt an allen Hängen';
-  };
-  const changed = () => {
-    showZoneOutside();
-    onSettingsChange(settings());
-  };
+  const changed = () => onSettingsChange(settings());
 
   // The danger level sets the max angle and whether the whole Hang counts; changing either
   // by hand overrides the level.
@@ -71,7 +62,6 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     onBulletin: (bulletin) => zonePicker.setBulletin(bulletin?.zone ?? null, bulletin?.zoneText ?? ''),
   });
   applyDanger(danger.current());
-  showZoneOutside();
   const dangerInputs = ['max-angle', 'whole-slope', 'outside-max-angle', 'outside-whole-slope'];
   for (const id of dangerInputs) {
     el(id).addEventListener('change', () => {

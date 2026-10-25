@@ -39,10 +39,11 @@
         <button type="button" role="radio" data-sub="plus" title="oberer Bereich der Stufe">+</button>
       </div>
       <div id="core-zone">
-        <div class="zone-title">Kernzone <button id="zone-slf" type="button" class="tag" title="Kernzone aus dem SLF-Bulletin übernehmen" hidden>SLF</button>
-          <span id="zone-outside"></span></div>
         <div class="zone-graphics">
-          <svg id="zone-rose" viewBox="-50 -50 100 100" role="group" aria-label="Expositionen der Kernzone"></svg>
+          <div class="zone-rose">
+            <svg id="zone-rose" viewBox="-50 -50 100 100" role="group" aria-label="Expositionen der Kernzone"></svg>
+            <button id="zone-slf" type="button" class="tag" title="Kernzone aus dem SLF-Bulletin übernehmen" hidden>SLF</button>
+          </div>
           <!-- Like the SLF's graphic: the mountain is shaded above the elevation line. -->
           <div class="zone-mountain">
             <svg viewBox="0 0 100 70" aria-hidden="true">
