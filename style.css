@@ -157,11 +157,9 @@ body,
   text-shadow: 0 0 3px #000;
 }
 
-/* Core zone: a compass rose of 8 wedges and the elevation it starts at. */
+/* Core zone, drawn like the SLF's graphic: a rose of 8 petals for the aspects and a mountain
+   shaded above the elevation line. */
 #core-zone {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin-top: 8px;
 }
 
@@ -169,21 +167,50 @@ body,
   display: none;
 }
 
+.zone-title {
+  font-weight: 600;
+}
+
+#zone-outside {
+  margin-left: 4px;
+  color: #555;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.zone-graphics {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+}
+
 #zone-rose {
   flex: none;
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
+  overflow: visible;
 }
 
 #zone-rose path {
   fill: white;
-  stroke: #444;
-  stroke-width: 1.5;
+  stroke: #1a2b3c;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
   cursor: pointer;
+  transition: fill 0.15s;
+}
+
+#zone-rose path:hover {
+  fill: #dbe7f0;
 }
 
 #zone-rose path[aria-checked="true"] {
   fill: #1b5e8c;
+}
+
+#zone-rose path[aria-checked="true"]:hover {
+  fill: #2a74a8;
 }
 
 #zone-rose path:focus-visible {
@@ -193,32 +220,72 @@ body,
 }
 
 #zone-rose text {
-  font: 600 13px system-ui, sans-serif;
+  font: 600 12px system-ui, sans-serif;
   text-anchor: middle;
   dominant-baseline: central;
-  fill: #222;
-  paint-order: stroke;
-  stroke: white;
-  stroke-width: 3px;
+  fill: #1a2b3c;
   pointer-events: none;
 }
 
-.zone-info {
-  display: grid;
-  gap: 2px;
+#zone-rose text.on {
+  fill: white;
 }
 
-.zone-title {
+.zone-mountain {
+  position: relative;
+  width: 96px;
+  height: 67px;
+}
+
+.zone-mountain svg {
+  width: 96px;
+  height: 67px;
+  overflow: visible;
+}
+
+.mountain-fill {
+  fill: #1b5e8c;
+}
+
+.mountain-outline {
+  fill: none;
+  stroke: #1a2b3c;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+#zone-line {
+  stroke: #1a2b3c;
+  stroke-width: 1.6;
+}
+
+#zone-elevation::-webkit-inner-spin-button,
+#zone-elevation::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* The elevation sits at the end of the line, like "2600m" in the SLF's graphic. */
+.zone-elevation {
+  position: absolute;
+  left: 100px;
+  top: calc(67px * 42 / 70 - 12px);
+  display: flex;
+  align-items: center;
+  gap: 2px;
   font-weight: 600;
 }
 
-.zone-info input {
-  width: 5em;
-}
-
-#zone-outside {
-  color: #555;
-  font-size: 12px;
+#zone-elevation {
+  width: 4em;
+  height: 24px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
 }
 
 /* "SLF" on the core zone: filled while it follows the bulletin, a button to go back to it
