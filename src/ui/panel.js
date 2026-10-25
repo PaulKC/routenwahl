@@ -4,8 +4,6 @@ import { countStoredTiles, clearStoredTiles } from '../data/tile-store.js';
 import { createDangerPicker } from './danger.js';
 import { createZonePicker } from './zone-picker.js';
 
-const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
-
 export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   const el = (id) => document.getElementById(id);
   el('reset').addEventListener('click', onReset);
@@ -117,9 +115,8 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     settings,
     refreshCacheInfo,
     showDangerFor: danger.setLocation,
+    // The hint on what to click next.
     showPoints(start, end) {
-      el('start-coords').textContent = start ? formatLatLng(start) : '–';
-      el('end-coords').textContent = end ? formatLatLng(end) : '–';
       el('hint').textContent = !start
         ? 'Klicke auf die Karte, um den Start zu setzen'
         : !end

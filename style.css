@@ -45,19 +45,6 @@ body,
   display: none;
 }
 
-.points {
-  display: flex;
-  gap: 16px;
-  color: #444;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.points .pin {
-  --size: 14px;
-  margin: 0 4px 0 2px;
-}
-
 /* Avalanche danger: "SLF aktuell" and the five levels in the European danger scale colours. */
 .danger,
 .snow {
