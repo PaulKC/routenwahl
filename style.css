@@ -674,18 +674,19 @@ body:not(.show-tiles) #legend .debug-tiles {
   transform: rotate(45deg); /* upright again inside the turned pin */
 }
 
-/* Wildlife rest zones in the legend: solid outline when binding, dashed when recommended. */
+/* Wildlife rest zones in the legend: filled red, with a dashed outline when recommended. */
 #legend .outline {
   display: inline-block;
   box-sizing: border-box;
   width: 14px;
   height: 10px;
   margin-right: 3px;
-  border: 2px solid #c62828;
-  background: rgba(198, 40, 40, 0.08);
+  border: 1.5px solid #b3261e;
+  background: rgba(232, 85, 63, 0.6);
   vertical-align: middle;
 }
 
 #legend .outline.recommended {
   border-style: dashed;
+  background: rgba(232, 85, 63, 0.4);
 }

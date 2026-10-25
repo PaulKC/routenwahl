@@ -209,13 +209,13 @@ function describe(grid, result) {
     case 'goal-no-go':
       return {
         summary: 'Keine Route: das Ziel liegt in einer Wildruhezone',
-        details: 'Der ganze Zielbereich um B liegt in einer Wildruhezone, die jetzt nicht betreten werden darf.',
+        details: 'Der ganze Zielbereich um B liegt in einer Wildruhezone, die nicht betreten werden darf.',
       };
     case 'blocked':
       if (result.startInNoGo) {
         return {
           summary: 'Keine Route: der Start liegt in einer Wildruhezone',
-          details: 'A liegt in einer Wildruhezone, die jetzt nicht betreten werden darf, und der Startbereich kommt nicht aus ihr heraus.',
+          details: 'A liegt in einer Wildruhezone, die nicht betreten werden darf, und der Startbereich kommt nicht aus ihr heraus.',
         };
       }
       return {

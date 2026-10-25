@@ -69,13 +69,3 @@ export async function loadZones(box, signal) {
   }
   return [...zones.values()].filter((zone) => !zone.bbox || overlaps(zone.bbox, box));
 }
-
-// Whether the date lies in the zone's protection period ("01.12. - 30.04.", which may run
-// over New Year). A period that can't be read counts as always.
-export function inProtectionPeriod(zone, date = new Date()) {
-  const match = zone.period.match(/(\d{1,2})\.(\d{1,2})\.?\s*-\s*(\d{1,2})\.(\d{1,2})\./);
-  if (!match) return true;
-  const [from, to] = [[match[2], match[1]], [match[4], match[3]]].map(([m, d]) => Number(m) * 100 + Number(d));
-  const today = (date.getMonth() + 1) * 100 + date.getDate();
-  return from <= to ? today >= from && today <= to : today >= from || today <= to;
-}

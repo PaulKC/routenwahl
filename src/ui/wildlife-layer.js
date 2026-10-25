@@ -1,15 +1,14 @@
 // Wildlife rest zones ("Wildruhezonen") outlined on the map: loaded for the map view from
-// zoom level MIN_ZOOM on, and for every route (see forRoute). Hovering a zone names it, its
-// rule and its protection period.
-import { loadZones, inProtectionPeriod } from '../data/wildlife-zones.js';
+// zoom level MIN_ZOOM on, and for every route (see forRoute). Filled red like on the swisstopo
+// map, whatever the season. Hovering a zone names it, its rule and its protection period.
+import { loadZones } from '../data/wildlife-zones.js';
 
 const MIN_ZOOM = 11;
 const ROUTE_MARGIN_M = 1500; // as for the elevation data, see elevation-layer.js
 
 const STYLES = {
-  binding: { color: '#c62828', weight: 2, fillColor: '#c62828', fillOpacity: 0.08 },
-  recommended: { color: '#c62828', weight: 2, dashArray: '6 5', fillColor: '#c62828', fillOpacity: 0.04 },
-  inactive: { color: '#757575', weight: 1.5, dashArray: '2 5', fillOpacity: 0 }, // outside the protection period
+  binding: { color: '#b3261e', weight: 1.5, fillColor: '#e8553f', fillOpacity: 0.6 },
+  recommended: { color: '#b3261e', weight: 1.5, dashArray: '6 4', fillColor: '#e8553f', fillOpacity: 0.4 },
 };
 
 export function createWildlifeLayer(map) {
@@ -22,10 +21,8 @@ export function createWildlifeLayer(map) {
     for (const zone of zones) {
       if (drawn.has(zone.id)) continue;
       drawn.add(zone.id);
-      const active = inProtectionPeriod(zone);
-      const style = !active ? STYLES.inactive : zone.binding ? STYLES.binding : STYLES.recommended;
-      L.geoJSON({ type: 'MultiPolygon', coordinates: zone.polygons }, { style })
-        .bindTooltip(describe(zone, active), { sticky: true })
+      L.geoJSON({ type: 'MultiPolygon', coordinates: zone.polygons }, { style: zone.binding ? STYLES.binding : STYLES.recommended })
+        .bindTooltip(describe(zone), { sticky: true })
         .addTo(group);
     }
   }
@@ -59,12 +56,12 @@ export function createWildlifeLayer(map) {
   };
 }
 
-function describe(zone, active) {
+function describe(zone) {
   const escape = (text) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
   const lines = [
     `<b>Wildruhezone ${escape(zone.name)}</b>`,
     `${zone.binding ? 'Rechtsverbindlich' : 'Empfohlen'}: ${escape(zone.rule)}`,
-    `Schutzzeit ${escape(zone.period)}${active ? '' : ' (jetzt nicht)'}`,
+    `Schutzzeit ${escape(zone.period)}`,
   ];
   if (zone.info) lines.push(escape(zone.info));
   return lines.join('<br>');
