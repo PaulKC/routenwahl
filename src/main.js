@@ -4,6 +4,8 @@ import { createPanel } from './ui/panel.js';
 import { createElevationLayer } from './ui/elevation-layer.js';
 import { createRouteLayer } from './ui/route-layer.js';
 import { createSearch } from './ui/search.js';
+import { createWildlifeLayer } from './ui/wildlife-layer.js';
+import { inProtectionPeriod } from './data/wildlife-zones.js';
 
 // ?debug in the address shows the debug options under "Erweitert".
 document.body.classList.toggle('debug', new URLSearchParams(location.search).has('debug'));
@@ -16,23 +18,40 @@ const panel = createPanel({
     picker.reset();
     elevation.cancel();
     routes.clear();
+    panel.showWildlifeWarning('');
     showDanger();
   },
-  onSettingsChange: (settings) => routes.recompute(settings),
+  onSettingsChange: (settings) => routes.recompute(routeSettings(settings)),
   onShowTiles: (show) => elevation.setShowTiles(show),
 });
 
 const elevation = createElevationLayer(map, panel.showElevationStatus);
 const routes = createRouteLayer(map, panel.showRouteStatus);
+const wildlife = createWildlifeLayer(map);
+
+// The wildlife rest zones around the current route: the route must not cross those in their
+// protection period, the recommended ones only if they are to be avoided.
+let routeZones = [];
+const routeSettings = (settings) => ({
+  ...settings,
+  noGo: routeZones
+    .filter((zone) => (zone.binding || settings.avoidRecommended) && inProtectionPeriod(zone))
+    .map(({ id, polygons }) => ({ id, polygons })),
+});
 
 async function findRoutes(start, end) {
   routes.clear();
-  const tiles = await elevation.load(start, end);
+  const [tiles, zones] = await Promise.all([
+    elevation.load(start, end),
+    wildlife.forRoute(start, end).catch(() => null),
+  ]);
   panel.refreshCacheInfo();
   // Skip if the points moved again while the tiles were loading.
   const current = picker.latLngs();
   if (!tiles || !current.start?.equals(start) || !current.end?.equals(end)) return;
-  routes.compute(tiles, start, end, panel.settings());
+  routeZones = zones ?? [];
+  panel.showWildlifeWarning(zones ? '' : 'Wildruhezonen konnten nicht geladen werden: bitte selbst prüfen.');
+  routes.compute(tiles, start, end, routeSettings(panel.settings()));
 }
 
 const picker = createPointPicker(map, {
@@ -62,4 +81,4 @@ if ('serviceWorker' in navigator) {
 }
 
 // Handy for debugging in the browser console.
-window.app = { map, picker, elevation, routes };
+window.app = { map, picker, elevation, routes, wildlife };

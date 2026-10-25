@@ -10,8 +10,10 @@
 // of its Hang (see hang.js) instead of its own slope. With a core zone (see core-zone.js),
 // maxAngle and wholeSlope hold inside it and zone.outsideMaxAngle and outsideWholeSlope
 // elsewhere. angleCap lowers the limit everywhere (for the search in safest-route.js).
+// Cells in settings.noGo (wildlife rest zones, see no-go.js) are off limits too.
 import { hangSlopes } from './hang.js';
 import { coreZoneMask } from './core-zone.js';
+import { noGoMask } from './no-go.js';
 
 const G = 9.81;
 export const EPSILON = 1e-3; // ignore improvements smaller than 1 mm of energy
@@ -29,24 +31,28 @@ export const withoutWholeSlope = (settings) => ({
 
 const limitsCache = new WeakMap(); // grid -> { key, limits }
 
-// The slope each cell is judged by and its max angle (null when the same everywhere).
+// The slope each cell is judged by, its max angle (null when the same everywhere) and the
+// mask of no-go cells (null if none).
 function cellLimits(grid, settings) {
-  const { maxAngle, wholeSlope, zone } = settings;
+  const { maxAngle, wholeSlope, zone, noGo = [] } = settings;
   const slopes = grid.slopes();
   const hang = wholeSlopeAnywhere(settings) ? hangSlopes(grid, settings) : null;
-  if (!zone) return { limitSlopes: wholeSlope ? hang : slopes, maxAngles: null };
-  const key = JSON.stringify([maxAngle, wholeSlope, zone, hang && [settings.patchSize, settings.hangAngle, settings.rockAngle, settings.ribAngle, settings.aspectSplit]]);
+  if (!zone && !noGo.length) return { limitSlopes: wholeSlope ? hang : slopes, maxAngles: null, noGoCells: null };
+  const key = JSON.stringify([maxAngle, wholeSlope, zone, noGo.map((area) => area.id),
+    hang && [settings.patchSize, settings.hangAngle, settings.rockAngle, settings.ribAngle, settings.aspectSplit]]);
   const cached = limitsCache.get(grid);
   if (cached?.key === key) return cached.limits;
-  const inZone = coreZoneMask(grid, zone);
+  const inZone = zone ? coreZoneMask(grid, zone) : null;
+  const noGoCells = noGo.length ? noGoMask(grid, noGo) : null;
   const limitSlopes = new Float32Array(slopes.length);
   const maxAngles = new Float32Array(slopes.length);
   for (let i = 0; i < slopes.length; i += 1) {
-    const whole = inZone[i] ? wholeSlope : zone.outsideWholeSlope;
+    const inside = !inZone || inZone[i];
+    const whole = inside ? wholeSlope : zone.outsideWholeSlope;
     limitSlopes[i] = whole ? hang[i] : slopes[i];
-    maxAngles[i] = inZone[i] ? maxAngle : zone.outsideMaxAngle;
+    maxAngles[i] = noGoCells?.[i] ? -1 : inside ? maxAngle : zone.outsideMaxAngle; // -1: never skiable
   }
-  const limits = { limitSlopes, maxAngles };
+  const limits = { limitSlopes, maxAngles, noGoCells };
   limitsCache.set(grid, { key, limits });
   return limits;
 }
@@ -56,7 +62,7 @@ export function createTerrain(grid, settings) {
   const { friction, maxSpeedKmh, maxAngle, angleCap = Infinity, blocked = null } = settings;
   const { width, height, heights, cellSize } = grid;
   const slopes = grid.slopes();
-  const { limitSlopes, maxAngles } = cellLimits(grid, settings);
+  const { limitSlopes, maxAngles, noGoCells } = cellLimits(grid, settings);
   const limit = Math.min(maxAngle, angleCap);
   const stepLength = [cellSize, cellSize * Math.SQRT2]; // [straight, diagonal]
   const frictionLoss = [friction * cellSize, friction * cellSize * Math.SQRT2];
@@ -66,6 +72,7 @@ export function createTerrain(grid, settings) {
     heights,
     slopes, // each cell's own slope
     limitSlopes, // the slope checked against the max angle
+    noGoCells, // 1 for cells in a no-go area, or null
     size: width * height,
     maxEnergy: speedToEnergy(maxSpeedKmh),
     stepLength,

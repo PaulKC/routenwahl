@@ -34,6 +34,7 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     showHangs: el('show-hangs').checked,
     zone: zoneSettings(),
     showZone: el('show-zone').checked,
+    avoidRecommended: el('avoid-recommended').checked,
   });
   const angleOf = (id) => Math.min(90, Math.max(0, Number(el(id).value) || 0));
   // The core zone with the max angle and whole-slope rule outside it, or null if it covers
@@ -93,7 +94,7 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   }
   showFriction();
 
-  for (const id of [...dangerInputs, 'show-zone', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
+  for (const id of [...dangerInputs, 'show-zone', 'avoid-recommended', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
     el(id).addEventListener('change', () => {
       showFriction();
       changed();
@@ -122,6 +123,9 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
         : !end
           ? 'Klicke auf die Karte, um das Ziel zu setzen'
           : 'Punkte können verschoben werden';
+    },
+    showWildlifeWarning(text) {
+      el('wildlife-warning').textContent = text;
     },
     showElevationStatus(text, details = '') {
       el('elevation-status').textContent = text;

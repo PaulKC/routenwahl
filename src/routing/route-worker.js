@@ -1,5 +1,6 @@
 // Web Worker that runs the route calculation off the main thread so the map stays usable.
-// Message in:  { id, tiles | null, start, end, settings } (tiles is null when unchanged)
+// Message in:  { id, tiles | null, start, end, settings } (tiles is null when unchanged;
+//              settings.noGo lists the areas the route must not cross, see no-go.js)
 // Message out: { id, progress: { label, done, total } } while running, then
 //              { id, result, geometry } or { id, error }
 // To cancel a calculation the page terminates this worker and starts a new one.

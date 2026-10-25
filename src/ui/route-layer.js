@@ -206,7 +206,18 @@ function describe(grid, result) {
         summary: 'Keine Route: das Ziel ist zu steil',
         details: `Der ganze Zielbereich um B ist steiler als die erlaubte Neigung (B: ${Math.round(result.goalSlope)}°).`,
       };
+    case 'goal-no-go':
+      return {
+        summary: 'Keine Route: das Ziel liegt in einer Wildruhezone',
+        details: 'Der ganze Zielbereich um B liegt in einer Wildruhezone, die jetzt nicht betreten werden darf.',
+      };
     case 'blocked':
+      if (result.startInNoGo) {
+        return {
+          summary: 'Keine Route: der Start liegt in einer Wildruhezone',
+          details: 'A liegt in einer Wildruhezone, die jetzt nicht betreten werden darf, und der Startbereich kommt nicht aus ihr heraus.',
+        };
+      }
       return {
         summary: 'Keine fahrbare Route',
         details: `Kein fahrbarer Weg von A (${hA} m) in den Zielbereich um B (${hB} m). Orange = von A aus erreichbar.`

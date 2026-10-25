@@ -5,6 +5,7 @@ import { findExposedCells } from './exposure.js';
 import { findSafestRoute, angleSearchRounds } from './safest-route.js';
 import { findHangs } from './hang.js';
 import { coreZoneMask } from './core-zone.js';
+import { noGoMask } from './no-go.js';
 import { wholeSlopeAnywhere } from './energy-model.js';
 
 export const EXPOSED = 3; // mask value: corridor cell whose fall line runs into a cliff
@@ -36,6 +37,7 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
     result.exposedRouteLength = exposedLength(result, exposed);
   }
   delete result.zone;
+  result.startInNoGo = Boolean(settings.noGo?.length) && noGoMask(grid, settings.noGo)[a] === 1;
   if (settings.showHangs) {
     // For the debug view; a copy, as the worker keeps the original cached.
     result.hangLabels = hangs.labels.slice();

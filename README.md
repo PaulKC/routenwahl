@@ -85,6 +85,20 @@ friction; a value typed there overrides the buttons), how Hänge are found, and 
 settings. The debug options (Hänge, elevation tile outlines) only show when the address ends
 in `?debug`, e.g. `index.html?debug`.
 
+## Wildlife rest zones
+
+Swiss wildlife rest zones ("Wildruhezonen") come from the BAFU's federal dataset through the
+geo.admin.ch API (layer `ch.bafu.wrz-wildruhezonen_portal`, src/data/wildlife-zones.js). They
+are outlined on the map from zoom 11 and around every route (src/ui/wildlife-layer.js): red
+solid when binding ("rechtsverbindlich"), red dashed when recommended ("empfohlen"), grey
+dotted outside their protection period ("Schutzzeit", e.g. 01.12. – 30.04.); hovering a zone
+shows its name, rule and period. In its protection period a binding zone is off limits for
+the route, and so is a recommended one unless "Empfohlene Wildruhezonen meiden" under
+"Erweitert" is unticked (src/routing/no-go.js rasterises the zones onto the height grid).
+The federal layer has no routes through the zones, so a zone that may be crossed on a marked
+route is blocked as a whole. If the zones can't be loaded, the panel says so and the route is
+computed without them.
+
 ## Install as an app (PWA)
 
 manifest.webmanifest, icons/ and the service worker sw.js make the page installable ("Zum

@@ -63,9 +63,10 @@ export function cellsWithin(grid, center, radius) {
 
 // Why there can't be a route into B's zone, or null if pass 2 is worth running.
 function checkGoal(terrain, start, goal, zone, energy) {
-  const { heights, limitSlopes } = terrain;
+  const { heights, limitSlopes, noGoCells } = terrain;
   if (Number.isNaN(heights[start]) || Number.isNaN(heights[goal])) return { reason: 'no-data' };
   if (!zone.some((cell) => heights[cell] < heights[start])) return { reason: 'goal-higher' };
+  if (noGoCells && zone.every((cell) => noGoCells[cell])) return { reason: 'goal-no-go' };
   if (!zone.some(terrain.isSkiable)) return { reason: 'goal-steep', goalSlope: limitSlopes[goal] };
   if (!zone.some((cell) => energy[cell] >= 0)) return { reason: 'blocked' };
   return null;

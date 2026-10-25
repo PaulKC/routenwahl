@@ -304,6 +304,16 @@ body,
   flex-basis: 100%;
 }
 
+#wildlife-warning:empty {
+  display: none;
+}
+
+#wildlife-warning {
+  color: #c62828;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 #danger-warning {
   color: #c62828;
   font-weight: 600;
@@ -662,4 +672,20 @@ body:not(.show-tiles) #legend .debug-tiles {
 .pin.end::after {
   border-radius: 2px;
   transform: rotate(45deg); /* upright again inside the turned pin */
+}
+
+/* Wildlife rest zones in the legend: solid outline when binding, dashed when recommended. */
+#legend .outline {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 14px;
+  height: 10px;
+  margin-right: 3px;
+  border: 2px solid #c62828;
+  background: rgba(198, 40, 40, 0.08);
+  vertical-align: middle;
+}
+
+#legend .outline.recommended {
+  border-style: dashed;
 }
