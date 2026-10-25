@@ -596,10 +596,6 @@ body:not(.show-tiles) #legend .debug-tiles {
   width: 18px;
 }
 
-.line.route {
-  border-top: 3px solid #0d47a1;
-}
-
 .line.straight {
   border-top: 2px dashed #333;
 }

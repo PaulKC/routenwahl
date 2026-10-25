@@ -101,11 +101,7 @@ export function createRouteLayer(map, showStatus) {
     L.circle(last.end, { radius: last.settings.goalRadius, color: '#c62828', weight: 2, dashArray: '4 4', fill: false })
       .bindTooltip('Zielbereich')
       .addTo(group);
-    if (result.path.length) {
-      L.polyline(result.path.map(grid.latLngOf), { color: '#0d47a1', weight: 3 })
-        .bindTooltip('Sicherste Route')
-        .addTo(group);
-    }
+    // The safest route is still computed for the figures in the status, but not drawn.
     const { summary, details } = describe(grid, result);
     showStatus(summary, null, details);
   }

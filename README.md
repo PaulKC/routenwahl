@@ -41,8 +41,11 @@ Exposed corridor cells are shown in purple: following the fall line from there f
 75 m (further while it is 30° or steeper) runs into a cliff, i.e. terrain of 45°
 or steeper dropping at least 10 m, with gentler gaps of up to 10 m bridged
 (distance, angle and height adjustable). Green = corridor of
-all feasible routes, blue = safest route (avoids exposed cells if possible, otherwise as little exposure as possible; then gentlest steepest point, then gentle and short), orange = reachable from
+all feasible routes, orange = reachable from
 A but no way on to B.
+The safest route (avoids exposed cells if possible, otherwise as little exposure as possible;
+then gentlest steepest point, then gentle and short) is still computed for the figures in the
+status line, but no longer drawn.
 
 ## Avalanche danger
 
