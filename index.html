@@ -38,6 +38,14 @@
         <button type="button" role="radio" data-sub="neutral" title="mittlerer Bereich der Stufe">=</button>
         <button type="button" role="radio" data-sub="plus" title="oberer Bereich der Stufe">+</button>
       </div>
+      <div id="core-zone">
+        <svg id="zone-rose" viewBox="-50 -50 100 100" role="group" aria-label="Expositionen der Kernzone"></svg>
+        <div class="zone-info">
+          <div class="zone-title">Kernzone <button id="zone-slf" type="button" class="tag" title="Kernzone aus dem SLF-Bulletin übernehmen" hidden>SLF</button></div>
+          <label>über <input id="zone-elevation" type="number" min="0" max="5000" step="100" placeholder="alle"> m</label>
+          <div id="zone-outside"></div>
+        </div>
+      </div>
       <div id="danger-warning"></div>
     </section>
     <section class="snow" aria-labelledby="snow-title">
@@ -62,6 +70,11 @@
         <legend title="Diese Werte setzen die Knöpfe oben; ein eigener Wert ersetzt sie">Von Lawinengefahr und Schnee gesetzt</legend>
         <label title="Wird von der Lawinengefahr gesetzt; ein eigener Wert ersetzt sie">Max. Neigung <input id="max-angle" type="number" min="0" max="90" step="0.5" value="30">°</label>
         <label title="Reduktionsmethode: ab Stufe 3 zählt die steilste Partie des ganzen Hangs, nicht nur die Neigung in der Spur"><input id="whole-slope" type="checkbox"> Ganzer Hang zählt</label>
+        <div class="outside-row" title="Ausserhalb der Kernzone gilt etwa eine Gefahrenstufe tiefer">
+          <span>Ausserhalb Kernzone:</span>
+          <label>Max. Neigung <input id="outside-max-angle" type="number" min="0" max="90" step="0.5" value="35">°</label>
+          <label><input id="outside-whole-slope" type="checkbox"> Ganzer Hang zählt</label>
+        </div>
         <div class="friction-row" title="Gemessene Ski-Schnee-Reibung: Wolfsperger, Meyer &amp; Gilgien 2021, Frontiers in Mechanical Engineering, doi:10.3389/fmech.2021.728722">
           <label>Reibung <input id="friction" type="number" min="0" max="1" step="0.01" value="0.07"></label>
           <span>Gleiten ab <span id="glide-angle">4.0</span>°</span>
@@ -91,6 +104,8 @@
           <input id="show-hangs" type="checkbox"> Hänge anzeigen</label>
         <label title="Zeigt die Umrisse der Höhendaten-Kacheln auf der Karte und in der Legende">
           <input id="show-tiles" type="checkbox"> Höhenkacheln anzeigen</label>
+        <label title="Färbt die Zellen der Kernzone">
+          <input id="show-zone" type="checkbox"> Kernzone anzeigen</label>
       </fieldset>
       <button id="clear-cache" type="button">Höhendaten-Cache leeren</button>
     </details>

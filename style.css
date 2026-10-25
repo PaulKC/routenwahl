@@ -157,6 +157,98 @@ body,
   text-shadow: 0 0 3px #000;
 }
 
+/* Core zone: a compass rose of 8 wedges and the elevation it starts at. */
+#core-zone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#core-zone[hidden] {
+  display: none;
+}
+
+#zone-rose {
+  flex: none;
+  width: 72px;
+  height: 72px;
+}
+
+#zone-rose path {
+  fill: white;
+  stroke: #444;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+#zone-rose path[aria-checked="true"] {
+  fill: #1b5e8c;
+}
+
+#zone-rose path:focus-visible {
+  outline: none;
+  stroke: #0d47a1;
+  stroke-width: 3;
+}
+
+#zone-rose text {
+  font: 600 13px system-ui, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: #222;
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.zone-info {
+  display: grid;
+  gap: 2px;
+}
+
+.zone-title {
+  font-weight: 600;
+}
+
+.zone-info input {
+  width: 5em;
+}
+
+#zone-outside {
+  color: #555;
+  font-size: 12px;
+}
+
+/* "SLF" on the core zone: filled while it follows the bulletin, a button to go back to it
+   once changed by hand. */
+#panel .tag {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px solid #0d47a1;
+  border-radius: 4px;
+  background: white;
+  color: #0d47a1;
+  font: 600 9px/13px system-ui, sans-serif;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+#panel .tag.active {
+  background: #0d47a1;
+  color: white;
+  cursor: default;
+}
+
+.outside-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  flex-basis: 100%;
+}
+
 #danger-warning {
   color: #c62828;
   font-weight: 600;

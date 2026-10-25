@@ -18,6 +18,7 @@ const hangColor = (label) => {
   const [r, g, b] = [[255, c, 0], [c, 255, 0], [0, 255, c], [0, c, 255], [c, 0, 255], [255, 0, c]][Math.floor(hue / 60)];
   return [r, g, b, 140];
 };
+const ZONE_COLOR = [27, 94, 140, 70]; // debug view of the core zone, SLF blue
 const MAX_OVERLAY_PX = 2048;
 const EXACT_EVERY_PX = 16; // overlay pixels between exact projections; the rest is interpolated
 
@@ -91,6 +92,7 @@ export function createRouteLayer(map, showStatus) {
       return;
     }
     const grid = createGridGeometry(geometry);
+    if (result.zoneMask) drawCells(grid, result.zoneMask, () => ZONE_COLOR); // debug view
     if (result.hangLabels) showHangs(grid, result.hangLabels, result.hangSteepest);
     if (result.mask) drawCells(grid, result.mask, (value) => COLORS[value]);
     L.circle(last.start, { radius: last.settings.goalRadius, color: '#2e7d32', weight: 2, dashArray: '4 4', fill: false })

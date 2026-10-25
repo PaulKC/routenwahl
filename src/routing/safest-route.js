@@ -7,6 +7,7 @@
 //      over long.
 import {
   EPSILON, energyToSpeed, createTerrain, startCells, findMaxArrivalEnergy, findMinEnergyNeeded,
+  topMaxAngle, wholeSlopeAnywhere,
 } from './energy-model.js';
 import { createMinHeap } from './min-heap.js';
 
@@ -15,23 +16,23 @@ const STEEPNESS_PENALTY = 4; // a step at the angle limit costs 1 + 4 = 5x a fla
 const EXPOSURE_PENALTY = 1000; // an exposed step costs like 1 km of flat terrain
 
 // Number of rounds the angle search takes for a given angle limit.
-export const angleSearchRounds = (maxAngle) => Math.max(0, Math.ceil(Math.log2(maxAngle / SAFEST_ANGLE_PRECISION)));
+export const angleSearchRounds = (settings) => Math.max(0, Math.ceil(Math.log2(topMaxAngle(settings) / SAFEST_ANGLE_PRECISION)));
 
 // `starts` lists A's zone, A first. `exposed` is a mask of cells to stay out of (or null). onStep(label) is called before each
 // step: the exposure check, every angle search round and the final path search.
 export function findSafestRoute(grid, starts, zone, settings, exposed, onStep = () => {}) {
   const reachesZone = (angle, blocked) => {
-    const energy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, maxAngle: angle, blocked }), starts);
+    const energy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, angleCap: angle, blocked }), starts);
     return zone.some((cell) => energy[cell] >= 0);
   };
   onStep('Sicherste Route: exponierte Stellen umgehbar?');
-  const avoidsExposure = Boolean(exposed) && reachesZone(settings.maxAngle, exposed);
+  const avoidsExposure = Boolean(exposed) && reachesZone(Infinity, exposed);
   const blocked = avoidsExposure ? exposed : null;
 
-  // Binary search for the lowest angle limit that still lets the skier reach B's zone.
-  let feasible = settings.maxAngle;
+  // Binary search for the lowest angle cap that still lets the skier reach B's zone.
+  let feasible = topMaxAngle(settings);
   let infeasible = 0;
-  const rounds = angleSearchRounds(settings.maxAngle);
+  const rounds = angleSearchRounds(settings);
   for (let round = 1; feasible - infeasible > SAFEST_ANGLE_PRECISION; round += 1) {
     onStep(`Sicherste Route: Winkelsuche ${round}/${rounds}`);
     const angle = (feasible + infeasible) / 2;
@@ -40,7 +41,7 @@ export function findSafestRoute(grid, starts, zone, settings, exposed, onStep = 
   }
 
   onStep('Sicherste Route: Wegsuche');
-  const terrain = createTerrain(grid, { ...settings, maxAngle: feasible, blocked });
+  const terrain = createTerrain(grid, { ...settings, angleCap: feasible, blocked });
   const energy = findMaxArrivalEnergy(terrain, starts);
   const arrivals = zone.filter((cell) => energy[cell] >= 0);
   const needed = findMinEnergyNeeded(terrain, arrivals, energy);
@@ -58,7 +59,7 @@ export function findSafestRoute(grid, starts, zone, settings, exposed, onStep = 
     path,
     length,
     maxSlope: Math.max(...path.slice(1).map((cell) => slopes[cell])),
-    maxHangSlope: settings.wholeSlope ? Math.max(...path.slice(1).map((cell) => limitSlopes[cell])) : null,
+    maxHangSlope: wholeSlopeAnywhere(settings) ? Math.max(...path.slice(1).map((cell) => limitSlopes[cell])) : null,
     descent: heights[path[0]] - heights[end],
     arrivalSpeedKmh: energyToSpeed(energyAtEnd),
     avoidsExposure,

@@ -2,6 +2,7 @@
 // parameters folded away under "Erweitert".
 import { countStoredTiles, clearStoredTiles } from '../data/tile-store.js';
 import { createDangerPicker } from './danger.js';
+import { createZonePicker } from './zone-picker.js';
 
 const formatLatLng = (ll) => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
 
@@ -16,10 +17,12 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     onShowTiles(show);
   });
 
+  const zonePicker = createZonePicker({ onChange: () => changed() });
+
   const settings = () => ({
     friction: Math.max(0, Number(el('friction').value) || 0),
     maxSpeedKmh: Math.max(1, Number(el('max-speed').value) || 1),
-    maxAngle: Math.min(90, Math.max(0, Number(el('max-angle').value) || 0)),
+    maxAngle: angleOf('max-angle'),
     goalRadius: Math.max(0, Number(el('goal-radius').value) || 0),
     cliffAngle: Math.min(90, Math.max(0, Number(el('cliff-angle').value) || 0)),
     fallDistance: Math.max(0, Number(el('fall-distance').value) || 0),
@@ -31,25 +34,53 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     ribAngle: Math.min(180, Math.max(0, Number(el('rib-angle').value) || 0)),
     aspectSplit: Math.min(180, Math.max(0, Number(el('aspect-split').value) || 0)),
     showHangs: el('show-hangs').checked,
+    zone: zoneSettings(),
+    showZone: el('show-zone').checked,
   });
+  const angleOf = (id) => Math.min(90, Math.max(0, Number(el(id).value) || 0));
+  // The core zone with the max angle and whole-slope rule outside it, or null if it covers
+  // every slope (or the level has nothing lower).
+  const zoneSettings = () => {
+    const zone = el('core-zone').hidden ? null : zonePicker.value();
+    return zone && { ...zone, outsideMaxAngle: angleOf('outside-max-angle'), outsideWholeSlope: el('outside-whole-slope').checked };
+  };
+  const showZoneOutside = () => {
+    const zone = zoneSettings();
+    el('zone-outside').textContent = zone
+      ? `sonst max. ${zone.outsideMaxAngle}°${zone.outsideWholeSlope ? ' im ganzen Hang' : ''}`
+      : 'gilt an allen Hängen';
+  };
+  const changed = () => {
+    showZoneOutside();
+    onSettingsChange(settings());
+  };
 
   // The danger level sets the max angle and whether the whole Hang counts; changing either
   // by hand overrides the level.
-  const applyDanger = ({ maxAngle, wholeSlope }) => {
+  const applyDanger = ({ maxAngle, wholeSlope, outsideMaxAngle, outsideWholeSlope }) => {
     el('max-angle').value = maxAngle;
     el('whole-slope').checked = wholeSlope;
+    el('outside-max-angle').value = outsideMaxAngle;
+    el('outside-whole-slope').checked = outsideWholeSlope;
   };
   const danger = createDangerPicker({
     onChange: (values) => {
       applyDanger(values);
-      onSettingsChange(settings());
+      changed();
     },
+    onBulletin: (bulletin) => zonePicker.setBulletin(bulletin?.zone ?? null, bulletin?.zoneText ?? ''),
   });
   applyDanger(danger.current());
-  for (const id of ['max-angle', 'whole-slope']) {
+  showZoneOutside();
+  const dangerInputs = ['max-angle', 'whole-slope', 'outside-max-angle', 'outside-whole-slope'];
+  for (const id of dangerInputs) {
     el(id).addEventListener('change', () => {
-      const { maxAngle, wholeSlope } = settings();
-      danger.setCustom({ maxAngle, wholeSlope });
+      danger.setCustom({
+        maxAngle: angleOf('max-angle'),
+        wholeSlope: el('whole-slope').checked,
+        outsideMaxAngle: angleOf('outside-max-angle'),
+        outsideWholeSlope: el('outside-whole-slope').checked,
+      });
     });
   }
 
@@ -74,10 +105,10 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   }
   showFriction();
 
-  for (const id of ['max-angle', 'whole-slope', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
+  for (const id of [...dangerInputs, 'show-zone', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
     el(id).addEventListener('change', () => {
       showFriction();
-      onSettingsChange(settings());
+      changed();
     });
   }
 

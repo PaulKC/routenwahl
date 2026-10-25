@@ -4,6 +4,7 @@
 // API docs: https://aws.slf.ch/api/bulletin/caaml
 const BULLETIN_URL = 'https://aws.slf.ch/api/bulletin/caaml/v4/de/geojson';
 
+const ASPECTS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const LEVEL = { low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const SUB_RANK = { minus: 0, neutral: 1, plus: 2 };
 
@@ -34,9 +35,12 @@ export function loadBulletin() {
   return pending;
 }
 
-// The danger at a point: { level, subdivision, regions, validUntil }, or null outside the
-// bulletin's regions (outside Switzerland, or out of season when there is no bulletin).
-// Where the bulletin gives several ratings (by elevation or time of day), the highest counts.
+// The danger at a point: { level, subdivision, zone, zoneText, regions, validUntil }, or null
+// outside the bulletin's regions (outside Switzerland, or out of season when there is no
+// bulletin). Where the bulletin gives several ratings (by elevation or time of day), the
+// highest counts. zone is where that level holds (see coreZoneOf), zoneText the SLF's
+// sentence for it ("Gefahrenstufe … an West- über Nordost- bis Südosthängen über 2600m.").
+
 export function dangerAt(bulletin, { lat, lng }) {
   const feature = bulletin.features.find((f) => containsPoint(f.geometry, lng, lat));
   if (!feature) return null;
@@ -49,8 +53,33 @@ export function dangerAt(bulletin, { lat, lng }) {
   if (!best) return null;
   return {
     ...best,
+    ...coreZoneOf(feature.properties.avalancheProblems ?? [], best.level),
     regions: (feature.properties.regions ?? []).map((r) => r.name),
     validUntil: new Date(feature.properties.validTime?.endTime),
+  };
+}
+
+// The core zone of a level: the aspects and the lowest elevation of the avalanche problems
+// rated at that level, as { zone: { aspects, minElevation }, zoneText }. Of several such
+// problems the zone covers all their aspects from the lowest of their elevations. A problem
+// without aspects or a lower bound covers all aspects or elevations, and so does a lower bound
+// that isn't in metres (e.g. "treeline"). An upper bound is left out, which only makes the
+// zone larger. zone is null when no problem is rated at the level.
+function coreZoneOf(problems, level) {
+  const atLevel = problems.filter((p) => LEVEL[p.dangerRatingValue] === level);
+  if (!atLevel.length) return { zone: null, zoneText: '' };
+  const aspects = new Set();
+  let minElevation = Infinity;
+  for (const problem of atLevel) {
+    const listed = problem.aspects?.length ? problem.aspects : ASPECTS;
+    for (const aspect of listed) aspects.add(aspect);
+    const bound = parseFloat(problem.elevation?.lowerBound); // NaN when missing or not metres
+    minElevation = Math.min(minElevation, Number.isFinite(bound) ? bound : -Infinity);
+  }
+  const texts = [...new Set(atLevel.map((p) => p.customData?.CH?.coreZoneText).filter(Boolean))];
+  return {
+    zone: { aspects: ASPECTS.filter((a) => aspects.has(a)), minElevation: Number.isFinite(minElevation) ? minElevation : null },
+    zoneText: texts.join(' '),
   };
 }
 

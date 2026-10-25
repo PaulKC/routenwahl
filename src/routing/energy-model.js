@@ -7,8 +7,11 @@
 // bits are fine as long as the skier arrives with enough speed. Cells whose terrain is
 // steeper than maxAngle, or marked in the optional `blocked` mask, are off limits (only A
 // itself may be either). With `wholeSlope` set, a cell counts as steep as the steepest part
-// of its Hang (see hang.js) instead of its own slope.
+// of its Hang (see hang.js) instead of its own slope. With a core zone (see core-zone.js),
+// maxAngle and wholeSlope hold inside it and zone.outsideMaxAngle and outsideWholeSlope
+// elsewhere. angleCap lowers the limit everywhere (for the search in safest-route.js).
 import { hangSlopes } from './hang.js';
+import { coreZoneMask } from './core-zone.js';
 
 const G = 9.81;
 export const EPSILON = 1e-3; // ignore improvements smaller than 1 mm of energy
@@ -17,12 +20,44 @@ const UNREACHABLE = -1;
 export const speedToEnergy = (kmh) => (kmh / 3.6) ** 2 / (2 * G);
 export const energyToSpeed = (energy) => Math.sqrt(2 * G * energy) * 3.6;
 
+// Whether the whole-slope rule holds anywhere, and the highest max angle of any cell.
+export const wholeSlopeAnywhere = (settings) => settings.wholeSlope || Boolean(settings.zone?.outsideWholeSlope);
+export const topMaxAngle = (settings) => Math.max(settings.maxAngle, settings.zone?.outsideMaxAngle ?? 0);
+export const withoutWholeSlope = (settings) => ({
+  ...settings, wholeSlope: false, zone: settings.zone && { ...settings.zone, outsideWholeSlope: false },
+});
+
+const limitsCache = new WeakMap(); // grid -> { key, limits }
+
+// The slope each cell is judged by and its max angle (null when the same everywhere).
+function cellLimits(grid, settings) {
+  const { maxAngle, wholeSlope, zone } = settings;
+  const slopes = grid.slopes();
+  const hang = wholeSlopeAnywhere(settings) ? hangSlopes(grid, settings) : null;
+  if (!zone) return { limitSlopes: wholeSlope ? hang : slopes, maxAngles: null };
+  const key = JSON.stringify([maxAngle, wholeSlope, zone, hang && [settings.patchSize, settings.hangAngle, settings.rockAngle, settings.ribAngle, settings.aspectSplit]]);
+  const cached = limitsCache.get(grid);
+  if (cached?.key === key) return cached.limits;
+  const inZone = coreZoneMask(grid, zone);
+  const limitSlopes = new Float32Array(slopes.length);
+  const maxAngles = new Float32Array(slopes.length);
+  for (let i = 0; i < slopes.length; i += 1) {
+    const whole = inZone[i] ? wholeSlope : zone.outsideWholeSlope;
+    limitSlopes[i] = whole ? hang[i] : slopes[i];
+    maxAngles[i] = inZone[i] ? maxAngle : zone.outsideMaxAngle;
+  }
+  const limits = { limitSlopes, maxAngles };
+  limitsCache.set(grid, { key, limits });
+  return limits;
+}
+
 // Grid plus the rules of the energy model.
 export function createTerrain(grid, settings) {
-  const { friction, maxSpeedKmh, maxAngle, blocked = null } = settings;
+  const { friction, maxSpeedKmh, maxAngle, angleCap = Infinity, blocked = null } = settings;
   const { width, height, heights, cellSize } = grid;
   const slopes = grid.slopes();
-  const limitSlopes = settings.wholeSlope ? hangSlopes(grid, settings) : slopes;
+  const { limitSlopes, maxAngles } = cellLimits(grid, settings);
+  const limit = Math.min(maxAngle, angleCap);
   const stepLength = [cellSize, cellSize * Math.SQRT2]; // [straight, diagonal]
   const frictionLoss = [friction * cellSize, friction * cellSize * Math.SQRT2];
 
@@ -30,13 +65,16 @@ export function createTerrain(grid, settings) {
     width,
     heights,
     slopes, // each cell's own slope
-    limitSlopes, // the slope checked against maxAngle
+    limitSlopes, // the slope checked against the max angle
     size: width * height,
     maxEnergy: speedToEnergy(maxSpeedKmh),
     stepLength,
     frictionLoss,
 
-    isSkiable: (cell) => limitSlopes[cell] <= maxAngle && !blocked?.[cell], // false for NaN (no data)
+    // false for NaN (no data)
+    isSkiable: maxAngles
+      ? (cell) => limitSlopes[cell] <= Math.min(maxAngles[cell], angleCap) && !blocked?.[cell]
+      : (cell) => limitSlopes[cell] <= limit && !blocked?.[cell],
 
     // Calls visit(neighbour, diagonal) for each of the up to 8 neighbours; diagonal is 0 or 1.
     forEachNeighbour(cell, visit) {

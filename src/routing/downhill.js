@@ -10,7 +10,7 @@
 // A cell lies on some feasible route ("the corridor") when 1. is at least 2.
 // The caller picks an example route through it (see safest-route.js).
 import {
-  EPSILON, createTerrain, findMaxArrivalEnergy, findMinEnergyNeeded,
+  EPSILON, createTerrain, findMaxArrivalEnergy, findMinEnergyNeeded, wholeSlopeAnywhere, withoutWholeSlope,
 } from './energy-model.js';
 
 export const REACHABLE = 1; // reachable from A, but B can't be reached from here
@@ -24,7 +24,7 @@ export function findDownhillRoutes(grid, starts, goal, settings) {
   const mask = new Uint8Array(terrain.size);
   const reachableCells = markWhere(mask, REACHABLE, (i) => energy[i] >= 0);
   // Under the whole-slope rule, show what only the Hang's steepness rules out.
-  const hangTooSteepCells = settings.wholeSlope
+  const hangTooSteepCells = wholeSlopeAnywhere(settings)
     ? markHangTooSteep(mask, grid, starts, settings, energy) : 0;
   const zone = cellsWithin(grid, goal, settings.goalRadius);
   const noRoute = { mask, reachableCells, hangTooSteepCells, corridorCells: 0, zone };
@@ -42,7 +42,7 @@ export function findDownhillRoutes(grid, starts, goal, settings) {
 // Cells the skier could reach from A judging each cell by its own slope, but not under the
 // whole-slope rule (energy is the latter).
 function markHangTooSteep(mask, grid, starts, settings, energy) {
-  const ownSlopeEnergy = findMaxArrivalEnergy(createTerrain(grid, { ...settings, wholeSlope: false }), starts);
+  const ownSlopeEnergy = findMaxArrivalEnergy(createTerrain(grid, withoutWholeSlope(settings)), starts);
   return markWhere(mask, HANG_TOO_STEEP, (i) => ownSlopeEnergy[i] >= 0 && energy[i] < 0);
 }
 

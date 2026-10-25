@@ -18,7 +18,7 @@ self.onmessage = ({ data: { id, tiles, start, end, settings } }) => {
       grid = buildHeightGrid(tiles);
     }
     const result = computeRoute(grid, start, end, settings, onStep);
-    const transfer = [result.mask, result.hangLabels].filter(Boolean).map((array) => array.buffer);
+    const transfer = [result.mask, result.hangLabels, result.zoneMask].filter(Boolean).map((array) => array.buffer);
     self.postMessage({ id, result, geometry: grid.geometry }, transfer);
   } catch (err) {
     self.postMessage({ id, error: err.message });

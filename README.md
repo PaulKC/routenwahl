@@ -60,6 +60,18 @@ The SLF splits mässig and erheblich into −, = and +; these spread over the 5�
 next level (2− 40°, 2= 37.5°, 2+ 35°; 3− 35°, 3= 32.5°, 3+ 30°; the SLF gives no angles for
 them, so this is the app's choice). A − = + row under the levels shows for 2 and 3, preselected
 from the bulletin (= when it gives none), with the bulletin's one tagged "SLF".
+The level only holds in the bulletin's core zone ("Kernzone"): the aspects and the elevation
+of the avalanche problems rated at that level (src/data/avalanche-bulletin.js; several such
+problems are merged into all their aspects from the lowest of their elevations, an upper
+bound is left out). On other slopes the SLF takes the danger as about one level lower, so
+those cells get 5° more (3− 35° → 40°, 3+ 30° → 35°, 4 → 30°, at most the 40° of level 1),
+with the whole-slope rule only if that lower level has it. Each cell's aspect is the direction
+its own slope faces, rounded to the bulletin's 8; nearly flat cells (under 5°) count as in
+the zone (src/routing/core-zone.js). The panel shows the zone as a compass rose and an "über …
+m" field, prefilled from the bulletin and editable (src/ui/zone-picker.js); its "SLF" tag
+brings back the bulletin's zone. Without a core zone in the bulletin the level holds on all
+slopes. The angles outside the zone are under "Erweitert" next to the ones inside, and
+`?debug` adds a view of the zone's cells.
 From level 3 the steepest part of the whole slope counts, not just the slope on the track
 (src/routing/hang.js): a patch's steepness is the median slope over 10 × 10 m around a cell
 (the reduction method's "steilste Hangpartie"; sources give 10 or 20 m); a Hang is a

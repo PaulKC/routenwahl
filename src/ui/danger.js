@@ -13,6 +13,9 @@ import { loadBulletin, dangerAt, dangerRank } from '../data/avalanche-bulletin.j
 // no angles for them; spreading them over the band is this app's choice.
 // From 3 the steepest part of the whole Hang counts, not just the slope on the track
 // (wholeSlope, see routing/hang.js).
+// The level holds in the bulletin's core zone (see zone-picker.js); on other slopes the SLF
+// takes it as about one level lower, which is 5° more (3− 35° → 40°, 3+ 30° → 35°, 4 → 30°),
+// up to the 40° of level 1, with the whole-slope rule only if that lower level has it.
 export const DANGER_LEVELS = [
   { level: 1, name: 'gering', maxAngle: 40, wholeSlope: false },
   { level: 2, name: 'mässig', sub: { minus: 40, neutral: 37.5, plus: 35 }, wholeSlope: false },
@@ -24,9 +27,12 @@ export const DANGER_LEVELS = [
 const SUBDIVISION = { minus: '−', neutral: '=', plus: '+' };
 
 const infoOf = (level) => DANGER_LEVELS.find((d) => d.level === level);
+const LEVEL_STEP = 5; // degrees between neighbouring levels
 
-// onChange({ maxAngle, wholeSlope }) fires when the chosen level changes what it sets.
-export function createDangerPicker({ onChange }) {
+// onChange({ maxAngle, wholeSlope, outsideMaxAngle, outsideWholeSlope }) fires when the chosen
+// level changes what it sets (outside… for slopes outside the core zone). onBulletin(danger)
+// gets the bulletin's danger at the location (see data/avalanche-bulletin.js), or null.
+export function createDangerPicker({ onChange, onBulletin }) {
   const el = (id) => document.getElementById(id);
   const buttons = [...el('danger-levels').querySelectorAll('button')];
   const subButtons = [...el('danger-subs').querySelectorAll('button')];
@@ -38,7 +44,7 @@ export function createDangerPicker({ onChange }) {
   let location = [];
   let bulletin = null; // { level, subdivision, ... } at the location, null if none
   let bulletinState = 'loading'; // 'loading' | 'ok' | 'failed'
-  let applied = null; // { maxAngle, wholeSlope } in effect
+  let applied = null; // { maxAngle, wholeSlope, outsideMaxAngle, outsideWholeSlope } in effect
 
   const fromBulletin = () => (bulletin ? { level: bulletin.level, sub: bulletin.subdivision ?? 'neutral' } : null);
   const effective = () => (mode === 'slf' ? fromBulletin() ?? fallback : mode === 'custom' ? null : mode);
@@ -53,6 +59,7 @@ export function createDangerPicker({ onChange }) {
     }
     const info = infoOf(picked?.level);
     el('danger-subs').hidden = !info?.sub;
+    el('core-zone').hidden = picked?.level === 1; // nothing lower than 1
     for (const button of subButtons) {
       const { sub } = button.dataset;
       button.setAttribute('aria-checked', String(sub === picked?.sub));
@@ -83,13 +90,22 @@ export function createDangerPicker({ onChange }) {
 
   const settingsOf = (picked) => {
     const info = picked && infoOf(picked.level);
-    return info ? { maxAngle: info.sub?.[picked.sub] ?? info.maxAngle, wholeSlope: info.wholeSlope } : null;
+    if (!info) return null;
+    const maxAngle = info.sub?.[picked.sub] ?? info.maxAngle;
+    const lower = infoOf(picked.level - 1) ?? info;
+    return {
+      maxAngle,
+      wholeSlope: info.wholeSlope,
+      outsideMaxAngle: Math.min(maxAngle + LEVEL_STEP, DANGER_LEVELS[0].maxAngle),
+      outsideWholeSlope: lower.wholeSlope,
+    };
   };
+  const sameSettings = (a, b) => Object.keys(a).every((key) => a[key] === b[key]);
 
   // Works out the settings for the current level and reports them if they changed.
   function update() {
     const next = settingsOf(effective());
-    const changed = next && (next.maxAngle !== applied.maxAngle || next.wholeSlope !== applied.wholeSlope);
+    const changed = next && !sameSettings(next, applied);
     if (next) applied = next;
     render();
     if (changed) onChange(applied);
@@ -106,6 +122,7 @@ export function createDangerPicker({ onChange }) {
       bulletinState = 'failed';
       bulletin = null;
     }
+    onBulletin(bulletin);
     update();
   }
 
