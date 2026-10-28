@@ -113,7 +113,14 @@ export function createMap(elementId) {
   // Each overlay's key shows in the legend while the overlay is on (options.legend names it).
   const showKey = (layer, show) => {
     const key = document.querySelector(`#legend [data-legend="${layer.options.legend}"]`);
-    if (key) key.hidden = !show;
+    if (!key) return;
+    key.hidden = !show;
+    if (show) {
+      // Open the legend and bring the new key into view; it sits below the app's own entries.
+      const legend = document.getElementById('legend');
+      legend.open = true;
+      key.scrollIntoView({ block: 'nearest' });
+    }
   };
   map.on('overlayadd', (e) => showKey(e.layer, true));
   map.on('overlayremove', (e) => showKey(e.layer, false));
