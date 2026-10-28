@@ -36,6 +36,13 @@ export function createMap(elementId) {
       opacity: 0.6,
       attribution: swisstopoAttribution,
     }),
+    // The ski touring routes of the swisstopo winter map (with the SAC), drawn for 1:50 000;
+    // beyond zoom 16 the tiles are scaled up.
+    'Skitouren (nur Schweiz)': L.tileLayer(swisstopo('ch.swisstopo-karto.skitouren', 'png'), {
+      maxZoom: 19,
+      maxNativeZoom: 16,
+      attribution: `${swisstopoAttribution}, Skitouren: swisstopo / SAC`,
+    }),
   };
 
   // The national maps only cover their own country, so pick the one for where the map is.

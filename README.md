@@ -120,4 +120,4 @@ python -m http.server 8765
 Then open http://localhost:8765. Downloaded elevation tiles are kept in the browser's Cache
 Storage (up to 400 tiles, about 500 MB) so reloads don't download them again; the
 panel has a button to clear it. The map uses Leaflet with swisstopo base maps
-(Landeskarte, Winterlandeskarte), OpenTopoMap, and swisstopo's "slope > 30°" overlay.
+(Landeskarte, Winterlandeskarte), OpenTopoMap, and swisstopo's "slope > 30°" and ski touring routes ("Skitouren", with the SAC) overlays.
