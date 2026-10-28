@@ -116,13 +116,18 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
     settings,
     refreshCacheInfo,
     showDangerFor: danger.setLocation,
-    // The hint on what to click next.
+    // The hint on what to click (or tap, on a touch screen) next.
     showPoints(start, end) {
+      const click = window.matchMedia('(pointer: coarse)').matches ? 'Tippe' : 'Klicke';
       el('hint').textContent = !start
-        ? 'Klicke auf die Karte, um den Start zu setzen'
+        ? `${click} auf die Karte, um den Start zu setzen`
         : !end
-          ? 'Klicke auf die Karte, um das Ziel zu setzen'
+          ? `${click} auf die Karte, um das Ziel zu setzen`
           : 'Punkte können verschoben werden';
+    },
+    // A one-off message in place of the hint, until the points change.
+    showMessage(text) {
+      el('hint').textContent = text;
     },
     showWildlifeWarning(text) {
       el('wildlife-warning').textContent = text;

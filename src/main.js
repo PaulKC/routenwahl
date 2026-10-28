@@ -5,6 +5,8 @@ import { createElevationLayer } from './ui/elevation-layer.js';
 import { createRouteLayer } from './ui/route-layer.js';
 import { createSearch } from './ui/search.js';
 import { createWildlifeLayer } from './ui/wildlife-layer.js';
+import { createSheets } from './ui/sheets.js';
+import { createLocateControl } from './ui/locate.js';
 
 // ?debug in the address shows the debug options under "Erweitert".
 document.body.classList.toggle('debug', new URLSearchParams(location.search).has('debug'));
@@ -23,6 +25,9 @@ const panel = createPanel({
   onSettingsChange: (settings) => routes.recompute(routeSettings(settings)),
   onShowTiles: (show) => elevation.setShowTiles(show),
 });
+
+createSheets(map);
+createLocateControl(map, panel.showMessage);
 
 const elevation = createElevationLayer(map, panel.showElevationStatus);
 const routes = createRouteLayer(map, panel.showRouteStatus);

@@ -18,6 +18,7 @@ const APP_FILES = [
   'src/routing/route-worker.js',
   'src/ui/danger.js', 'src/ui/elevation-layer.js', 'src/ui/map.js', 'src/ui/panel.js',
   'src/ui/points.js', 'src/ui/route-layer.js', 'src/ui/search.js', 'src/ui/zone-picker.js', 'src/ui/wildlife-layer.js',
+  'src/ui/sheets.js', 'src/ui/locate.js',
 ];
 const LIBRARIES = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

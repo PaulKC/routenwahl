@@ -55,6 +55,7 @@ body,
 .danger-head {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   font-weight: 600;
 }
 
@@ -744,4 +745,297 @@ body:not(.show-tiles) #legend .debug-tiles {
 #legend .outline.recommended {
   border-style: dashed;
   background: rgba(232, 85, 63, 0.4);
+}
+
+/* "Mein Standort" under the zoom buttons: a crosshair, pulsing while the position loads. */
+.locate-control .locate-button {
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%23333' stroke-width='2'%3E%3Ccircle cx='9' cy='9' r='5'/%3E%3Cpath d='M9 1v4M9 13v4M1 9h4M13 9h4'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.locate-control .locate-button.busy {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.4;
+  }
+}
+
+/* Phone parts (see src/ui/sheets.js): hidden on larger screens. */
+#panel-handle,
+#layers-button,
+#sheet-backdrop,
+#layers-head {
+  display: none;
+}
+
+/* Touch screens: controls at least 40px high, and 16px text in fields so iOS doesn't zoom in
+   when one is tapped. */
+@media (pointer: coarse) {
+  #search-input,
+  #panel input[type="number"] {
+    font-size: 16px;
+  }
+
+  #panel input[type="number"] {
+    min-height: 40px;
+    box-sizing: border-box;
+  }
+
+  #panel input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  .settings {
+    gap: 8px 14px;
+  }
+
+  .settings label,
+  .outside-row,
+  .friction-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+  }
+
+  #danger-subs button {
+    height: 40px;
+  }
+
+  #danger-levels button,
+  #snow-presets button {
+    height: 44px;
+  }
+
+  #advanced summary {
+    padding: 10px 0;
+  }
+
+  #reset,
+  #clear-cache {
+    min-height: 44px;
+  }
+
+  #search-suggestions li {
+    padding: 10px 12px;
+  }
+
+  #search-input {
+    height: 44px;
+    border-radius: 22px;
+  }
+
+  .leaflet-control-layers label {
+    padding: 6px 0;
+  }
+
+  .leaflet-control-layers-selector {
+    width: 18px;
+    height: 18px;
+  }
+
+  #zone-elevation {
+    width: 4.5em;
+    min-height: 36px;
+  }
+}
+
+/* Phone: the panel docks to the bottom edge as a sheet that folds down to the hint and the
+   danger level; must match COMPACT in src/ui/sheets.js. */
+@media (max-width: 600px), (max-height: 500px) {
+  #search {
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    width: auto;
+    transform: none;
+  }
+
+  .leaflet-top {
+    top: calc(max(10px, env(safe-area-inset-top)) + 46px);
+  }
+
+  .leaflet-left {
+    left: env(safe-area-inset-left);
+  }
+
+  .leaflet-right {
+    right: env(safe-area-inset-right);
+  }
+
+  .leaflet-bottom {
+    bottom: var(--panel-height, 0px);
+  }
+
+  .leaflet-control-attribution {
+    font-size: 10px;
+  }
+
+  #panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 70vh;
+    max-height: 70dvh;
+    padding: 0 16px calc(12px + env(safe-area-inset-bottom));
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.25);
+  }
+
+  /* The grabber at the top edge: tap or swipe to open and close the sheet. */
+  #panel-handle {
+    display: flex;
+    justify-content: center;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0 -16px -4px;
+    padding: 10px 0 8px;
+    background: white;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  #panel-handle span {
+    width: 40px;
+    height: 5px;
+    border-radius: 3px;
+    background: #c4c4c4;
+  }
+
+  /* Folded: only the hint, the danger level and what the route is doing. */
+  #panel.collapsed > :not(#panel-handle, #hint, .danger, #elevation-status, #wildlife-warning, #route-status, #route-progress),
+  #panel.collapsed #core-zone {
+    display: none;
+  }
+
+  #panel.collapsed {
+    overflow: hidden;
+  }
+
+  /* "Ebenen" opens Karte and Legende as one sheet. */
+  #layers-button {
+    display: block;
+    position: absolute;
+    top: calc(max(10px, env(safe-area-inset-top)) + 56px);
+    right: max(10px, env(safe-area-inset-right));
+    z-index: 1000;
+    height: 40px;
+    padding: 0 14px 0 36px;
+    border: 0;
+    border-radius: 20px;
+    background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%23333' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M9 2 1 6l8 4 8-4z'/%3E%3Cpath d='m1 10 8 4 8-4'/%3E%3C/svg%3E") no-repeat 12px center;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+    color: #222;
+    font: 600 14px system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  body:not(.layers-open) .leaflet-top.leaflet-right {
+    display: none;
+  }
+
+  body.layers-open #sheet-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  body.layers-open .leaflet-top.leaflet-right {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1050;
+    max-height: 75vh;
+    max-height: 75dvh;
+    overflow-y: auto;
+    padding: 0 6px env(safe-area-inset-bottom);
+    border-radius: 14px 14px 0 0;
+    background: white;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.25);
+    pointer-events: auto;
+  }
+
+  body.layers-open .leaflet-right .leaflet-control {
+    float: none;
+    margin: 0;
+  }
+
+  body.layers-open #layers-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 6px 4px 6px 10px;
+    background: white;
+    font: 15px system-ui, sans-serif;
+  }
+
+  #layers-close {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  /* Inside the sheet the cards drop their own box and just list their contents. */
+  body.layers-open .map-card {
+    width: auto;
+    max-width: none;
+    box-shadow: none;
+    border-radius: 0;
+    border-top: 1px solid #eee;
+    font-size: 14px;
+  }
+
+  body.layers-open details.map-card > :not(summary) {
+    max-height: none;
+  }
+
+  body.layers-open .map-card summary {
+    padding: 8px 0;
+  }
+}
+
+/* Phone on its side: the sheets sit along the left and right edges instead of the bottom. */
+@media (max-height: 500px) and (min-width: 601px) {
+  #panel {
+    right: auto;
+    left: env(safe-area-inset-left);
+    width: 360px;
+    max-height: calc(100vh - 66px);
+    max-height: calc(100dvh - 66px);
+  }
+
+  /* Too low for the zoom buttons above the panel (pinching zooms); the scale moves beside it. */
+  .leaflet-control-zoom {
+    display: none;
+  }
+
+  .leaflet-bottom {
+    bottom: 0;
+  }
+
+  .leaflet-bottom.leaflet-left {
+    left: calc(env(safe-area-inset-left) + 360px);
+  }
+
+  body.layers-open .leaflet-top.leaflet-right {
+    top: 0;
+    left: auto;
+    width: 340px;
+    max-height: none;
+    border-radius: 14px 0 0 14px;
+  }
 }

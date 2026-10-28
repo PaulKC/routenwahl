@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Skitour Webapp</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0d47a1">
@@ -16,6 +16,9 @@
 <body>
   <div id="map"></div>
   <div id="panel">
+    <!-- Only shown on a phone, where the panel docks to the bottom (see src/ui/sheets.js). -->
+    <div id="panel-handle" role="button" tabindex="0" aria-controls="panel" aria-expanded="false"
+      aria-label="Einstellungen ein- und ausklappen"><span></span></div>
     <div id="hint"></div>
     <section class="danger" aria-labelledby="danger-title">
       <div class="danger-head">
@@ -133,6 +136,13 @@
       autocomplete="off" role="combobox" aria-controls="search-suggestions" aria-expanded="false" aria-autocomplete="list">
     <ul id="search-suggestions" role="listbox" hidden></ul>
   </form>
+  <!-- On a phone "Karte" and "Legende" open as one sheet from this button (see src/ui/sheets.js). -->
+  <button id="layers-button" type="button" aria-expanded="false" title="Karte und Legende">Ebenen</button>
+  <div id="sheet-backdrop"></div>
+  <div id="layers-head">
+    <b>Karte und Legende</b>
+    <button id="layers-close" type="button" aria-label="Schliessen">✕</button>
+  </div>
   <details id="basemap" class="map-card" open>
     <summary>Karte</summary>
   </details>

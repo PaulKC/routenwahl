@@ -125,7 +125,9 @@ export function createMap(elementId) {
   map.on('overlayadd', (e) => showKey(e.layer, true));
   map.on('overlayremove', (e) => showKey(e.layer, false));
   // As controls in the same corner, Leaflet stacks the cards, so opening one pushes the
-  // next one down instead of overlapping it.
+  // next one down instead of overlapping it. On a phone the corner becomes the layers sheet,
+  // with layers-head as its title bar (see sheets.js).
+  addElementAsControl(map, 'layers-head', 'topright');
   addCardAsControl(map, 'basemap', 'topright');
   addCardAsControl(map, 'legend', 'topright');
   return map;
