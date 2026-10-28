@@ -548,7 +548,7 @@ details.map-card > :not(summary) {
   gap: 6px;
 }
 
-/* Approximate colours of the SLF's CAT map; the exact key is linked. */
+/* Colours of the SLF's CAT map as it shows at 70 % over the map; the exact key is linked. */
 .ramp {
   flex: none;
   width: 24px;
@@ -558,15 +558,15 @@ details.map-card > :not(summary) {
 }
 
 .ramp.cat-release {
-  background: linear-gradient(to right, #f4a6a0, #c0182a);
+  background: linear-gradient(to right, #f2b6c6, #e0a090, #a0525a);
 }
 
 .ramp.cat-runout {
-  background: linear-gradient(to right, #b8d4ee, #1f4e9c);
+  background: linear-gradient(to right, #a8d4f4, #78b0f0, #4a5fd8);
 }
 
 .ramp.cat-large {
-  background: #f2dc4c;
+  background: #eef0a0;
 }
 
 #legend .pin {
