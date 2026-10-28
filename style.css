@@ -565,6 +565,21 @@ details.map-card > :not(summary) {
   background: linear-gradient(to right, #a8d4f4, #78b0f0, #4a5fd8);
 }
 
+.ramp.ath {
+  flex: 1;
+  background: linear-gradient(to right, #8ee8b0, #6edcf0, #6a8cf0, #e2a4f0, #d07a68, #8a4444);
+}
+
+#legend .ath-scale {
+  align-items: center;
+  font-size: 11px;
+  color: #555;
+}
+
+#legend .ath-scale .ramp {
+  margin-top: 0;
+}
+
 .ramp.cat-large {
   background: #eef0a0;
 }
