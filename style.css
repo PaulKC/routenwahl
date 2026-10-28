@@ -525,6 +525,50 @@ details.map-card > :not(summary) {
   gap: 6px;
 }
 
+#legend li[hidden] {
+  display: none;
+}
+
+/* Overlay keys: a title, then the key from swisstopo (an image) or the SLF (swatches). */
+#legend .overlay-legend {
+  display: grid;
+  gap: 3px;
+  padding-top: 4px;
+  border-top: 1px solid #eee;
+}
+
+#legend .overlay-legend img {
+  max-width: 100%;
+  height: auto;
+}
+
+#legend .overlay-legend .key {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* Approximate colours of the SLF's CAT map; the exact key is linked. */
+.ramp {
+  flex: none;
+  width: 24px;
+  height: 10px;
+  margin-top: 3px;
+  border-radius: 2px;
+}
+
+.ramp.cat-release {
+  background: linear-gradient(to right, #f4a6a0, #c0182a);
+}
+
+.ramp.cat-runout {
+  background: linear-gradient(to right, #b8d4ee, #1f4e9c);
+}
+
+.ramp.cat-large {
+  background: #f2dc4c;
+}
+
 #legend .pin {
   --size: 14px;
   margin: 0 2px;

@@ -35,6 +35,7 @@ export function createMap(elementId) {
 
   const overlays = {
     'Hangneigung > 30° (nur Schweiz)': L.tileLayer(swisstopo('ch.swisstopo.hangneigung-ueber_30', 'png'), {
+      legend: 'hangneigung',
       maxZoom: 19,
       opacity: 0.6,
       attribution: swisstopoAttribution,
@@ -42,23 +43,27 @@ export function createMap(elementId) {
     // The ski touring routes of the swisstopo winter map (with the SAC), drawn for 1:50 000;
     // beyond zoom 16 the tiles are scaled up.
     'Skitouren (nur Schweiz)': L.tileLayer(swisstopo('ch.swisstopo-karto.skitouren', 'png'), {
+      legend: 'skitouren',
       maxZoom: 19,
       maxNativeZoom: 16,
       attribution: `${swisstopoAttribution}, Skitouren: swisstopo / SAC`,
     }),
     'Schneeschuhrouten (nur Schweiz)': L.tileLayer(swisstopo('ch.swisstopo-karto.schneeschuhrouten', 'png'), {
+      legend: 'schneeschuhrouten',
       maxZoom: 19,
       maxNativeZoom: 16,
       attribution: `${swisstopoAttribution}, Schneeschuhrouten: swisstopo / SAC`,
     }),
     // Classified avalanche terrain: potential release areas and runout zones.
     'Lawinengelände CAT (SLF)': L.tileLayer(slf('ch.slf.terrainclassification-hybr'), {
+      legend: 'cat',
       maxZoom: 19,
       opacity: 0.7,
       attribution: slfAttribution,
     }),
     // Avalanche terrain hazard: release areas and runout zones weighted by their consequences.
     'Lawinengelände ATH (SLF)': L.tileLayer(slf('ch.slf.terrainclassification-hom'), {
+      legend: 'ath',
       maxZoom: 19,
       opacity: 0.7,
       attribution: slfAttribution,
@@ -105,6 +110,13 @@ export function createMap(elementId) {
   layersContainer.classList.remove('leaflet-control'); // the card is the control now
   document.getElementById('basemap').append(layersContainer);
   L.control.scale({ imperial: false }).addTo(map);
+  // Each overlay's key shows in the legend while the overlay is on (options.legend names it).
+  const showKey = (layer, show) => {
+    const key = document.querySelector(`#legend [data-legend="${layer.options.legend}"]`);
+    if (key) key.hidden = !show;
+  };
+  map.on('overlayadd', (e) => showKey(e.layer, true));
+  map.on('overlayremove', (e) => showKey(e.layer, false));
   // As controls in the same corner, Leaflet stacks the cards, so opening one pushes the
   // next one down instead of overlapping it.
   addCardAsControl(map, 'basemap', 'topright');

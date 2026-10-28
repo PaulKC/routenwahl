@@ -147,6 +147,27 @@
       <li><span class="line straight"></span> Luftlinie A – B</li>
       <li><span class="ring start"></span><span class="ring goal"></span> Start- und Zielbereich</li>
       <li><span class="outline wildlife"></span><span class="outline wildlife recommended"></span> Wildruhezone (verbindlich, empfohlen)</li>
+      <!-- Keys of the map overlays, each shown while its overlay is on (see src/ui/map.js). -->
+      <li class="overlay-legend" data-legend="hangneigung" hidden>
+        <b>Hangneigung &gt; 30°</b>
+        <img src="https://api3.geo.admin.ch/static/images/legends/ch.swisstopo.hangneigung-ueber_30_de.png" alt="Legende Hangneigung über 30°" loading="lazy"></li>
+      <li class="overlay-legend" data-legend="skitouren" hidden>
+        <b>Skitouren</b>
+        <img src="https://api3.geo.admin.ch/static/images/legends/ch.swisstopo-karto.skitouren_de.png" alt="Legende Skitouren" loading="lazy"></li>
+      <li class="overlay-legend" data-legend="schneeschuhrouten" hidden>
+        <b>Schneeschuhrouten</b>
+        <img src="https://api3.geo.admin.ch/static/images/legends/ch.swisstopo-karto.schneeschuhrouten_de.png" alt="Legende Schneeschuhrouten" loading="lazy"></li>
+      <li class="overlay-legend" data-legend="cat" hidden>
+        <b>Lawinengelände CAT (SLF)</b>
+        <span class="key"><span class="ramp cat-release"></span> Mögliche Anrissgebiete (30–50°); je dunkler, desto eher</span>
+        <span class="key"><span class="ramp cat-runout"></span> Auslaufgebiete; je dunkler, desto eher auch aus der Ferne ausgelöst (sehr ungünstige Schneedecke)</span>
+        <span class="key"><span class="ramp cat-large"></span> Möglicher Auslauf einer grossen Lawine (Grösse 3)</span>
+        <a href="https://content.whiterisk.ch/en/help/maps/classified-avalanche-terrain-cat" target="_blank" rel="noopener">Genaue Legende (White Risk)</a></li>
+      <li class="overlay-legend" data-legend="ath" hidden>
+        <b>Lawinengelände ATH (SLF)</b>
+        <span>Farbverlauf: je höher der Wert, desto eher ist man dort durch Lawinen gefährdet. Zählt Anriss, Auslauf und Folgen
+          (z. B. Geländefallen, Absturz) zusammen; Anriss- und Auslaufgebiete sind nicht getrennt.</span>
+        <a href="https://content.whiterisk.ch/en/help/maps/classified-avalanche-terrain-cat-map" target="_blank" rel="noopener">Genaue Legende (White Risk)</a></li>
       <li class="debug-tiles"><span class="swatch tile loading"></span> Höhenkachel lädt</li>
       <li class="debug-tiles"><span class="swatch tile loaded"></span> Höhenkachel geladen</li>
       <li class="debug-tiles"><span class="swatch tile failed"></span> Höhenkachel fehlgeschlagen</li>
