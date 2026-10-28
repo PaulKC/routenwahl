@@ -4,6 +4,9 @@ import { regionAt } from '../data/regions.js';
 const swisstopo = (layer, format = 'jpeg') =>
   `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.${format}`;
 const swisstopoAttribution = '&copy; <a href="https://www.swisstopo.admin.ch/">swisstopo</a>';
+// The SLF's avalanche terrain maps (CAT, ATH), see https://content.whiterisk.ch/en/help/avalanche-terrain-maps
+const slf = (layer) => `https://map.slf.ch/public/mapcache/wmts/1.0.0/${layer}/default/GoogleMapsCompatible/{z}/{y}/{x}.png`;
+const slfAttribution = '&copy; <a href="https://www.slf.ch/">SLF</a>';
 
 export function createMap(elementId) {
   const baseLayers = {
@@ -42,6 +45,23 @@ export function createMap(elementId) {
       maxZoom: 19,
       maxNativeZoom: 16,
       attribution: `${swisstopoAttribution}, Skitouren: swisstopo / SAC`,
+    }),
+    'Schneeschuhrouten (nur Schweiz)': L.tileLayer(swisstopo('ch.swisstopo-karto.schneeschuhrouten', 'png'), {
+      maxZoom: 19,
+      maxNativeZoom: 16,
+      attribution: `${swisstopoAttribution}, Schneeschuhrouten: swisstopo / SAC`,
+    }),
+    // Classified avalanche terrain: potential release areas and runout zones.
+    'Lawinengelände CAT (SLF)': L.tileLayer(slf('ch.slf.terrainclassification-hybr'), {
+      maxZoom: 19,
+      opacity: 0.7,
+      attribution: slfAttribution,
+    }),
+    // Avalanche terrain hazard: release areas and runout zones weighted by their consequences.
+    'Lawinengelände ATH (SLF)': L.tileLayer(slf('ch.slf.terrainclassification-hom'), {
+      maxZoom: 19,
+      opacity: 0.7,
+      attribution: slfAttribution,
     }),
   };
 
