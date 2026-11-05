@@ -7,6 +7,7 @@ import { createSearch } from './ui/search.js';
 import { createWildlifeLayer } from './ui/wildlife-layer.js';
 import { createSheets } from './ui/sheets.js';
 import { createLocateControl } from './ui/locate.js';
+import { createCameraControl } from './ui/camera-view.js';
 
 // ?debug in the address shows the debug options under "Erweitert".
 document.body.classList.toggle('debug', new URLSearchParams(location.search).has('debug'));
@@ -28,6 +29,14 @@ const panel = createPanel({
 
 createSheets(map);
 createLocateControl(map, panel.showMessage);
+// Without GPS (e.g. on a laptop) the camera view stands at A, or else the map centre.
+createCameraControl(map, {
+  settings: () => panel.settings(),
+  fallbackPosition: () => {
+    const { start } = picker.latLngs();
+    return start ? { latlng: start, label: 'Test: Punkt A' } : { latlng: map.getCenter(), label: 'Test: Kartenmitte' };
+  },
+});
 
 const elevation = createElevationLayer(map, panel.showElevationStatus);
 const routes = createRouteLayer(map, panel.showRouteStatus);

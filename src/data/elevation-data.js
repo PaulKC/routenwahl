@@ -1,5 +1,5 @@
 // Elevation tiles (square GeoTIFFs in the region's metric grid) for an area.
-import { fetchTile } from './tile-store.js';
+import { fetchTile, fetchStoredTile, storedTileUrls } from './tile-store.js';
 import { toProjected } from './projection.js';
 
 export const MAX_TILES = 100;
@@ -41,7 +41,42 @@ async function downloadTile(tile, signal) {
     if (err.name === 'AbortError') throw err;
     throw new Error(`${tile.key}: ${err.message}`);
   }
-  const { buffer, fromStore } = fetched;
+  return decodeTile(tile, fetched);
+}
+
+// The tiles decoded during this page visit, whatever region they are from.
+export const decodedTiles = () => [...tileCache.values()];
+
+// Swiss tiles within `radius` metres of `latlng` that earlier visits left in the tile store,
+// decoded without downloading anything (the camera view must work offline). Tiles of other
+// regions are only found among decodedTiles(), as their URLs don't name the square they cover.
+export async function storedSwissTilesAround(latlng, radius) {
+  const { x, y } = toProjected('EPSG:2056', latlng);
+  const newest = new Map(); // square -> { year, url }
+  for (const url of await storedTileUrls()) {
+    // e.g. .../swissalti3d_2022_2673-1194_2_2056_5728.tif: survey year, then the km square's
+    // south-west corner.
+    const match = url.match(/swissalti3d_(\d{4})_(\d{4})-(\d{4})_/);
+    if (!match) continue;
+    const [, year, east, north] = match;
+    const [x0, y0] = [Number(east) * 1000, Number(north) * 1000];
+    if (x0 > x + radius || x0 + 1000 < x - radius || y0 > y + radius || y0 + 1000 < y - radius) continue;
+    const square = `${east}-${north}`;
+    if (!newest.has(square) || newest.get(square).year < year) newest.set(square, { year, url });
+  }
+  const tiles = [];
+  for (const [key, { year, url }] of newest) {
+    if (tileCache.has(url)) {
+      tiles.push(tileCache.get(url));
+      continue;
+    }
+    const fetched = await fetchStoredTile(url);
+    if (fetched) tiles.push(await decodeTile({ key, year, url, crs: 'EPSG:2056' }, fetched));
+  }
+  return tiles;
+}
+
+async function decodeTile(tile, { buffer, fromStore }) {
   const image = await (await GeoTIFF.fromArrayBuffer(buffer)).getImage();
   const heights = await readHeights(image);
   let min = Infinity;

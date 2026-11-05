@@ -1,8 +1,8 @@
 # Skitour Webapp
 
 Webapp that shows possible ski descents whose slope stays below a user-selected
-threshold (e.g. max 30°), displayed on a map. A phone camera overlay (AR view)
-may follow later.
+threshold (e.g. max 30°), displayed on a map, and on the phone's camera image
+(see "Camera view").
 
 ## Status
 
@@ -98,6 +98,34 @@ unticked (src/routing/no-go.js rasterises the zones onto the height grid).
 The federal layer has no routes through the zones, so a zone that may be crossed on a marked
 route is blocked as a whole. If the zones can't be loaded, the panel says so and the route is
 computed without them.
+
+## Camera view
+
+The camera button under "Mein Standort" opens the camera view (src/ui/camera-view.js): the
+rear camera's image with the terrain in front of the skier coloured on top. Green = skiable,
+purple = skiable but exposed (a fall runs into a cliff), red = steeper than the max angle (or,
+from danger level 3, its Hang is), dark = cliff (from the cliff angle). The rules are the
+route's (src/camera/classify.js), but without asking whether a cell can be reached from A.
+
+- Terrain: the 2 m grid within 250 m of the skier, classified over 400 m so Hänge and cliffs
+  just outside still count, drawn in 3D with three.js (0.169, cached by the service worker).
+  White distance rings at 10, 25, 50, 100 and 200 m; a yellow skyline from the tiles within
+  6 km. It is cut again after moving 40 m.
+- Data: only tiles already in the browser (src/camera/local-terrain.js): those loaded this
+  visit, plus Swiss tiles left in the tile store by earlier visits. Nothing is downloaded, so
+  calculate a route in the area at home and the view works offline on the tour. Elsewhere
+  than Switzerland only the tiles of this visit count.
+- Position: GPS (fixes coarser than 100 m are ignored), eye 1.7 m above the elevation model.
+  Without GPS it stands at A, or the map centre; `?cam=lat,lng,heading,pitch` in the address
+  sets a test point and view direction.
+- Direction: the orientation sensors (src/camera/orientation.js), corrected from magnetic to
+  grid north (rough declination for the Alps plus the grid's meridian convergence). Android:
+  deviceorientationabsolute. iOS: the gyroscope, kept pointing north by the compass heading
+  (asked for in the tap). Without sensors (laptop) dragging looks around.
+- Alignment: compass and GPS are only roughly right, so dragging moves the overlay onto the
+  real terrain (kept until the view closes) and two fingers or the mouse wheel set the camera's
+  field of view across the long side of the image (default 67°, remembered per device). ↺ resets
+  both. "Gelände" shows the terrain grey and shaded (on by default without a camera).
 
 ## Install as an app (PWA)
 

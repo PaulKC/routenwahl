@@ -21,6 +21,19 @@ export async function fetchTile(url, signal) {
   return { buffer, fromStore: false };
 }
 
+// { buffer, fromStore: true } for a stored tile, or null if it isn't stored. Never downloads.
+export async function fetchStoredTile(url) {
+  const store = await openStore().catch(() => null);
+  const stored = await store?.match(url);
+  return stored ? { buffer: await stored.arrayBuffer(), fromStore: true } : null;
+}
+
+// URLs of all stored tiles.
+export async function storedTileUrls() {
+  const store = await openStore().catch(() => null);
+  return store ? (await store.keys()).map((request) => request.url) : [];
+}
+
 async function trimStore(store) {
   const keys = await store.keys(); // in the order they were stored
   for (const request of keys.slice(0, Math.max(0, keys.length - MAX_STORED_TILES))) {

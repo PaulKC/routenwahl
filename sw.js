@@ -5,7 +5,7 @@
 //   - Everything else (map and elevation tiles, SLF bulletin, place search) is left to the
 //     browser. Elevation tiles have their own cache (src/data/tile-store.js), which this
 //     worker never touches.
-const CACHE = 'skitour-app-v1';
+const CACHE = 'skitour-app-v2';
 
 const APP_FILES = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
@@ -18,13 +18,15 @@ const APP_FILES = [
   'src/routing/route-worker.js',
   'src/ui/danger.js', 'src/ui/elevation-layer.js', 'src/ui/map.js', 'src/ui/panel.js',
   'src/ui/points.js', 'src/ui/route-layer.js', 'src/ui/search.js', 'src/ui/zone-picker.js', 'src/ui/wildlife-layer.js',
-  'src/ui/sheets.js', 'src/ui/locate.js',
+  'src/ui/sheets.js', 'src/ui/locate.js', 'src/ui/camera-view.js',
+  'src/camera/classify.js', 'src/camera/local-terrain.js', 'src/camera/orientation.js',
 ];
 const LIBRARIES = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js',
   'https://cdn.jsdelivr.net/npm/proj4@2.12.1/+esm',
+  'https://unpkg.com/three@0.169.0/build/three.module.min.js', // camera view (src/ui/camera-view.js)
 ];
 const isLibrary = (url) => /^https:\/\/(unpkg\.com|cdn\.jsdelivr\.net)\/.+@\d/.test(url);
 
