@@ -17,31 +17,41 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
 
   const zonePicker = createZonePicker({ onChange: () => changed() });
 
+  // The value of a number input, between min and max; empty or invalid counts as 0.
+  const number = (id, min = 0, max = Infinity) => Math.min(max, Math.max(min, Number(el(id).value) || 0));
+  const angle = (id) => number(id, 0, 90);
+  const checked = (id) => el(id).checked;
+
+  // The route's settings from the inputs below; changing any of them recomputes the route.
+  const SETTING_INPUTS = [
+    'friction', 'max-speed', 'max-angle', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height',
+    'whole-slope', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs',
+    'outside-max-angle', 'outside-whole-slope', 'show-zone', 'avoid-recommended',
+  ];
   const settings = () => ({
-    friction: Math.max(0, Number(el('friction').value) || 0),
-    maxSpeedKmh: Math.max(1, Number(el('max-speed').value) || 1),
-    maxAngle: angleOf('max-angle'),
-    goalRadius: Math.max(0, Number(el('goal-radius').value) || 0),
-    cliffAngle: Math.min(90, Math.max(0, Number(el('cliff-angle').value) || 0)),
-    fallDistance: Math.max(0, Number(el('fall-distance').value) || 0),
-    minFallHeight: Math.max(0, Number(el('min-fall-height').value) || 0),
-    wholeSlope: el('whole-slope').checked,
-    patchSize: Math.max(0, Number(el('patch-size').value) || 0),
-    hangAngle: Math.min(90, Math.max(0, Number(el('hang-angle').value) || 0)),
-    rockAngle: Math.min(90, Math.max(0, Number(el('rock-angle').value) || 0)),
-    ribAngle: Math.min(180, Math.max(0, Number(el('rib-angle').value) || 0)),
-    aspectSplit: Math.min(180, Math.max(0, Number(el('aspect-split').value) || 0)),
-    showHangs: el('show-hangs').checked,
+    friction: number('friction'),
+    maxSpeedKmh: number('max-speed', 1),
+    maxAngle: angle('max-angle'),
+    goalRadius: number('goal-radius'),
+    cliffAngle: angle('cliff-angle'),
+    fallDistance: number('fall-distance'),
+    minFallHeight: number('min-fall-height'),
+    wholeSlope: checked('whole-slope'),
+    patchSize: number('patch-size'),
+    hangAngle: angle('hang-angle'),
+    rockAngle: angle('rock-angle'),
+    ribAngle: number('rib-angle', 0, 180),
+    aspectSplit: number('aspect-split', 0, 180),
+    showHangs: checked('show-hangs'),
     zone: zoneSettings(),
-    showZone: el('show-zone').checked,
-    avoidRecommended: el('avoid-recommended').checked,
+    showZone: checked('show-zone'),
+    avoidRecommended: checked('avoid-recommended'),
   });
-  const angleOf = (id) => Math.min(90, Math.max(0, Number(el(id).value) || 0));
   // The core zone with the max angle and whole-slope rule outside it, or null if it covers
   // every slope (or the level has nothing lower).
   const zoneSettings = () => {
     const zone = el('core-zone').hidden ? null : zonePicker.value();
-    return zone && { ...zone, outsideMaxAngle: angleOf('outside-max-angle'), outsideWholeSlope: el('outside-whole-slope').checked };
+    return zone && { ...zone, outsideMaxAngle: angle('outside-max-angle'), outsideWholeSlope: checked('outside-whole-slope') };
   };
   const changed = () => onSettingsChange(settings());
 
@@ -65,10 +75,10 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   for (const id of dangerInputs) {
     el(id).addEventListener('change', () => {
       danger.setCustom({
-        maxAngle: angleOf('max-angle'),
-        wholeSlope: el('whole-slope').checked,
-        outsideMaxAngle: angleOf('outside-max-angle'),
-        outsideWholeSlope: el('outside-whole-slope').checked,
+        maxAngle: angle('max-angle'),
+        wholeSlope: checked('whole-slope'),
+        outsideMaxAngle: angle('outside-max-angle'),
+        outsideWholeSlope: checked('outside-whole-slope'),
       });
     });
   }
@@ -77,7 +87,7 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   // leaves them all unpicked. Skis stop gliding below atan(friction).
   const snowButtons = [...el('snow-presets').querySelectorAll('button')];
   const showFriction = () => {
-    const friction = Math.max(0, Number(el('friction').value) || 0);
+    const friction = number('friction');
     const glide = (Math.atan(friction) * 180 / Math.PI).toFixed(1);
     el('glide-angle').textContent = glide;
     el('snow-glide').textContent = `gleitet ab ${glide}°`;
@@ -94,7 +104,7 @@ export function createPanel({ onReset, onSettingsChange, onShowTiles }) {
   }
   showFriction();
 
-  for (const id of [...dangerInputs, 'show-zone', 'avoid-recommended', 'patch-size', 'hang-angle', 'rock-angle', 'rib-angle', 'aspect-split', 'show-hangs', 'friction', 'max-speed', 'goal-radius', 'cliff-angle', 'fall-distance', 'min-fall-height']) {
+  for (const id of SETTING_INPUTS) {
     el(id).addEventListener('change', () => {
       showFriction();
       changed();
