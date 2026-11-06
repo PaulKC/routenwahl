@@ -5,7 +5,7 @@
 //   - Everything else (map and elevation tiles, SLF bulletin, place search) is left to the
 //     browser. Elevation tiles have their own cache (src/data/tile-store.js), which this
 //     worker never touches.
-const CACHE = 'skitour-app-v5';
+const CACHE = 'skitour-app-v6';
 
 const APP_FILES = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
@@ -15,9 +15,9 @@ const APP_FILES = [
   'src/data/projection.js', 'src/data/regions.js', 'src/data/tile-store.js', 'src/data/wildlife-zones.js',
   'src/routing/compute-route.js', 'src/routing/core-zone.js', 'src/routing/downhill.js', 'src/routing/energy-model.js',
   'src/routing/exposure.js', 'src/routing/hang.js', 'src/routing/no-go.js',
-  'src/routing/route-worker.js',
+  'src/routing/route-worker.js', 'src/routing/route-client.js',
   'src/ui/danger.js', 'src/ui/elevation-layer.js', 'src/ui/map.js', 'src/ui/panel.js',
-  'src/ui/points.js', 'src/ui/route-layer.js', 'src/ui/search.js', 'src/ui/zone-picker.js', 'src/ui/wildlife-layer.js',
+  'src/ui/points.js', 'src/ui/route-layer.js', 'src/ui/cell-overlay.js', 'src/ui/search.js', 'src/ui/zone-picker.js', 'src/ui/wildlife-layer.js',
   'src/ui/sheets.js', 'src/ui/locate.js', 'src/ui/camera-view.js',
   'src/camera/classify.js', 'src/camera/classify-worker.js', 'src/camera/local-terrain.js', 'src/camera/orientation.js',
   'src/camera/terrain-area.js', 'src/camera/terrain-mesh.js', 'src/camera/alignment.js',
