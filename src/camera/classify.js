@@ -5,13 +5,9 @@
 // the terrain in front of the skier as it is.
 import { createTerrain } from '../routing/energy-model.js';
 import { findExposedCells } from '../routing/exposure.js';
+import { CAMERA } from '../terrain-classes.js';
 
-export const SKIABLE = 1;
-export const EXPOSED = 2; // skiable, but a fall there runs into a cliff
-export const TOO_STEEP = 3; // steeper than the max angle, or its Hang is
-export const CLIFF = 4; // as steep as the cliff angle or steeper
-
-// Uint8Array with one of the classes above per cell, 0 where there is no data.
+// Uint8Array with one of the CAMERA classes (terrain-classes.js) per cell, 0 where there is no data.
 export function classifyCells(grid, settings) {
   const terrain = createTerrain(grid, settings);
   const slopes = grid.slopes();
@@ -20,9 +16,9 @@ export function classifyCells(grid, settings) {
   for (let i = 0; i < slopes.length; i += 1) {
     const slope = slopes[i];
     if (!Number.isFinite(slope)) continue;
-    if (slope >= settings.cliffAngle) classes[i] = CLIFF;
-    else if (!terrain.isSkiable(i)) classes[i] = TOO_STEEP;
-    else classes[i] = exposed[i] ? EXPOSED : SKIABLE;
+    if (slope >= settings.cliffAngle) classes[i] = CAMERA.CLIFF;
+    else if (!terrain.isSkiable(i)) classes[i] = CAMERA.TOO_STEEP;
+    else classes[i] = exposed[i] ? CAMERA.EXPOSED : CAMERA.SKIABLE;
   }
   return classes;
 }

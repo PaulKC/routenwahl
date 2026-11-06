@@ -8,20 +8,18 @@
 //   1. forward from A:  the most energy the skier can arrive with at each cell,
 //   2. backward from B: the least energy needed at each cell to still make it into B's zone.
 // A cell lies on some feasible route ("the corridor") when 1. is at least 2.
+import { ROUTE } from '../terrain-classes.js';
 import {
   EPSILON, createTerrain, findMaxArrivalEnergy, findMinEnergyNeeded, wholeSlopeAnywhere, withoutWholeSlope,
 } from './energy-model.js';
 
-export const REACHABLE = 1; // reachable from A, but B can't be reached from here
-export const CORRIDOR = 2; // on at least one feasible route from A to B
-export const HANG_TOO_STEEP = 4; // reachable by its own slope, but its Hang is too steep
-
+// The mask marks cells with the ROUTE values of terrain-classes.js.
 export function findDownhillRoutes(grid, starts, goal, settings) {
   const terrain = createTerrain(grid, settings);
 
   const energy = findMaxArrivalEnergy(terrain, starts);
   const mask = new Uint8Array(terrain.size);
-  const reachableCells = markWhere(mask, REACHABLE, (i) => energy[i] >= 0);
+  const reachableCells = markWhere(mask, ROUTE.REACHABLE, (i) => energy[i] >= 0);
   // Under the whole-slope rule, show what only the Hang's steepness rules out.
   const hangTooSteepCells = wholeSlopeAnywhere(settings)
     ? markHangTooSteep(mask, grid, starts, settings, energy) : 0;
@@ -33,7 +31,7 @@ export function findDownhillRoutes(grid, starts, goal, settings) {
 
   const arrivals = zone.filter((cell) => energy[cell] >= 0);
   const needed = findMinEnergyNeeded(terrain, arrivals, energy);
-  const corridorCells = markWhere(mask, CORRIDOR, (i) => energy[i] >= 0 && energy[i] >= needed[i] - EPSILON);
+  const corridorCells = markWhere(mask, ROUTE.CORRIDOR, (i) => energy[i] >= 0 && energy[i] >= needed[i] - EPSILON);
 
   return { mask, reachableCells, hangTooSteepCells, corridorCells, zone, reason: null };
 }
@@ -42,7 +40,7 @@ export function findDownhillRoutes(grid, starts, goal, settings) {
 // whole-slope rule (energy is the latter).
 function markHangTooSteep(mask, grid, starts, settings, energy) {
   const ownSlopeEnergy = findMaxArrivalEnergy(createTerrain(grid, withoutWholeSlope(settings)), starts);
-  return markWhere(mask, HANG_TOO_STEEP, (i) => ownSlopeEnergy[i] >= 0 && energy[i] < 0);
+  return markWhere(mask, ROUTE.HANG_TOO_STEEP, (i) => ownSlopeEnergy[i] >= 0 && energy[i] < 0);
 }
 
 // All cells whose centre lies within radius metres of the centre of `center`.

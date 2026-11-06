@@ -1,16 +1,9 @@
 // Shows the downhill corridor and an example route on the map. The calculation runs in a
 // Web Worker; a new one waits for the one running (see compute), whose result is then dropped.
 import { createGridGeometry } from '../data/height-grid.js';
-import { REACHABLE, CORRIDOR, HANG_TOO_STEEP } from '../routing/downhill.js';
-import { EXPOSED } from '../routing/compute-route.js';
+import { ROUTE_MAP_COLORS } from '../terrain-classes.js';
 import { toProjected } from '../data/projection.js';
 
-const COLORS = {
-  [REACHABLE]: [255, 152, 0, 90], // orange: reachable from A, but dead end
-  [CORRIDOR]: [46, 125, 50, 150], // green: on some route to B
-  [EXPOSED]: [156, 39, 176, 170], // purple: on some route to B, but exposed
-  [HANG_TOO_STEEP]: [229, 57, 53, 110], // red: rideable by its own slope, but its Hang is too steep
-};
 // Debug view of the Hänge: each Hang in its own colour, picked from its number.
 const hangColor = (label) => {
   const hue = (label * 137.508) % 360; // golden angle: neighbouring numbers get distant hues
@@ -124,7 +117,7 @@ export function createRouteLayer(map, showStatus) {
     if (result.mask) shown = { mask: result.mask, grid };
     if (result.zoneMask) drawCells(grid, result.zoneMask, () => ZONE_COLOR); // debug view
     if (result.hangLabels) showHangs(grid, result.hangLabels, result.hangSteepest);
-    if (result.mask) drawCells(grid, result.mask, (value) => COLORS[value]);
+    if (result.mask) drawCells(grid, result.mask, (value) => ROUTE_MAP_COLORS[value]);
     L.circle(last.start, { radius: last.settings.goalRadius, color: '#2e7d32', weight: 2, dashArray: '4 4', fill: false })
       .bindTooltip('Startbereich')
       .addTo(group);
@@ -208,7 +201,7 @@ export function createRouteLayer(map, showStatus) {
     L.imageOverlay(canvas.toDataURL(), bounds, { className: 'pixelated' }).addTo(group);
   }
 
-  // The mask of the route on the map (see downhill.js and compute-route.js for its values) and
+  // The mask of the route on the map (ROUTE values, see terrain-classes.js) and
   // its grid, or null.
   const current = () => shown;
 

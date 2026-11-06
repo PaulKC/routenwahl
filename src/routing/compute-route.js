@@ -1,13 +1,12 @@
 // One full route calculation: the corridor and its exposed cells. Runs in the
 // route worker (see route-worker.js), so it must not touch the page or Leaflet.
-import { findDownhillRoutes, cellsWithin, CORRIDOR } from './downhill.js';
+import { ROUTE } from '../terrain-classes.js';
+import { findDownhillRoutes, cellsWithin } from './downhill.js';
 import { findExposedCells } from './exposure.js';
 import { findHangs, hangsKnown } from './hang.js';
 import { coreZoneMask } from './core-zone.js';
 import { noGoMask } from './no-go.js';
 import { wholeSlopeAnywhere } from './energy-model.js';
-
-export const EXPOSED = 3; // mask value: corridor cell whose fall line runs into a cliff
 
 // Number of steps computeRoute reports through onStep (if a route is found).
 export const routeSteps = (grid, settings) => ((wholeSlopeAnywhere(settings) || settings.showHangs) && !hangsKnown(grid, settings) ? 1 : 0) + 2;
@@ -50,11 +49,11 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
 // Marks exposed corridor cells in the mask and counts them.
 function markExposure(grid, corridor, settings) {
   const { mask } = corridor;
-  const exposed = findExposedCells(grid, (cell) => mask[cell] === CORRIDOR, settings);
+  const exposed = findExposedCells(grid, (cell) => mask[cell] === ROUTE.CORRIDOR, settings);
   corridor.exposedCells = 0;
   for (let i = 0; i < mask.length; i += 1) {
     if (exposed[i]) {
-      mask[i] = EXPOSED;
+      mask[i] = ROUTE.EXPOSED;
       corridor.exposedCells += 1;
     }
   }

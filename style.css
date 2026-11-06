@@ -511,7 +511,7 @@ details.map-card > :not(summary) {
   margin: 5px 0;
 }
 
-/* Colours must match COLORS in src/route-layer.js and the styles in src/elevation-layer.js. */
+/* Colours must match src/terrain-classes.js and the styles in src/ui/elevation-layer.js. */
 #legend ul {
   display: grid;
   gap: 5px;

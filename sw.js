@@ -5,12 +5,12 @@
 //   - Everything else (map and elevation tiles, SLF bulletin, place search) is left to the
 //     browser. Elevation tiles have their own cache (src/data/tile-store.js), which this
 //     worker never touches.
-const CACHE = 'skitour-app-v3';
+const CACHE = 'skitour-app-v4';
 
 const APP_FILES = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
-  'src/main.js',
+  'src/main.js', 'src/terrain-classes.js',
   'src/data/avalanche-bulletin.js', 'src/data/elevation-data.js', 'src/data/height-grid.js',
   'src/data/projection.js', 'src/data/regions.js', 'src/data/tile-store.js', 'src/data/wildlife-zones.js',
   'src/routing/compute-route.js', 'src/routing/core-zone.js', 'src/routing/downhill.js', 'src/routing/energy-model.js',

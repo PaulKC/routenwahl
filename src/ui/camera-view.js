@@ -17,10 +17,10 @@ import {
   tileAt, cropTile, createHeightSampler, computeSkyline, gridNorthOffset, magneticDeclination,
 } from '../camera/local-terrain.js';
 import { buildHeightGrid } from '../data/height-grid.js';
-import { SKIABLE, EXPOSED, TOO_STEEP, CLIFF } from '../camera/classify.js';
 import { createOrientation, requestOrientationPermission } from '../camera/orientation.js';
-import { REACHABLE, CORRIDOR, HANG_TOO_STEEP } from '../routing/downhill.js';
-import { EXPOSED as ROUTE_EXPOSED } from '../routing/compute-route.js';
+import {
+  CAMERA, CAMERA_COLORS, ROUTE_CAMERA_COLORS, GREEN, PURPLE, ORANGE, RED, DARK,
+} from '../terrain-classes.js';
 
 export const THREE_URL = 'https://unpkg.com/three@0.169.0/build/three.module.min.js';
 
@@ -37,21 +37,8 @@ const RINGS = [10, 25, 50, 100, 200]; // distance rings, metres
 const MAX_GPS_ACCURACY = 100; // metres: coarser fixes (e.g. a laptop's Wi-Fi guess) aren't used
 const DEFAULT_FOV = 67; // degrees across the long side of the camera image (typical main camera)
 const FOV_KEY = 'skitour-camera-fov';
-const COLORS = {
-  [SKIABLE]: [46, 125, 50, 95],
-  [EXPOSED]: [156, 39, 176, 140],
-  [TOO_STEEP]: [229, 57, 53, 125],
-  [CLIFF]: [33, 33, 33, 170],
-};
-const DEAD_END = [255, 152, 0, 120]; // the route's orange: reachable from A, but no way on to B
-// The route's mask values in the colours above, as on the map.
-const ROUTE_COLORS = {
-  [CORRIDOR]: COLORS[SKIABLE],
-  [ROUTE_EXPOSED]: COLORS[EXPOSED],
-  [REACHABLE]: DEAD_END,
-  [HANG_TOO_STEEP]: COLORS[TOO_STEEP],
-};
 const deg = Math.PI / 180;
+const rgb = ([r, g, b]) => `rgb(${r} ${g} ${b})`;
 
 // A button under "Mein Standort" that opens the camera view. settings() gives the panel's
 // current settings, route() the route on the map ({ mask, grid } or null) and
@@ -102,11 +89,11 @@ function openCameraView({ settings, route, fallback }) {
       <button type="button" class="camera-reset" title="Ausrichtung und Bildwinkel zurücksetzen">↺</button>
     </div>
     <div class="camera-legend">
-      <span><i style="background: rgb(46 125 50)"></i>Fahrbar</span>
-      <span><i style="background: rgb(156 39 176)"></i>Exponiert</span>
-      <span class="camera-dead-end" hidden><i style="background: rgb(255 152 0)"></i>Sackgasse</span>
-      <span><i style="background: rgb(229 57 53)"></i>Zu steil</span>
-      <span><i style="background: rgb(33 33 33)"></i>Absturz</span>
+      <span><i style="background: ${rgb(GREEN)}"></i>Fahrbar</span>
+      <span><i style="background: ${rgb(PURPLE)}"></i>Exponiert</span>
+      <span class="camera-dead-end" hidden><i style="background: ${rgb(ORANGE)}"></i>Sackgasse</span>
+      <span><i style="background: ${rgb(RED)}"></i>Zu steil</span>
+      <span><i style="background: ${rgb(DARK)}"></i>Absturz</span>
     </div>
     <div class="camera-hint">Ziehen: Bild auf das Gelände schieben · Zwei Finger: Bildwinkel</div>`;
   document.body.append(view);
@@ -501,8 +488,8 @@ function makeTerrain(THREE, area, cx, cy, route) {
       if (routeCell >= 0) {
         usesRoute = true;
         // Out of the route's reach only what is too steep anyway, as on the map nothing.
-        color = ROUTE_COLORS[route.mask[routeCell]] ?? (classes[cell] >= TOO_STEEP ? COLORS[classes[cell]] : null);
-      } else color = COLORS[classes[cell]];
+        color = ROUTE_CAMERA_COLORS[route.mask[routeCell]] ?? (classes[cell] >= CAMERA.TOO_STEEP ? CAMERA_COLORS[classes[cell]] : null);
+      } else color = CAMERA_COLORS[classes[cell]];
       if (color) colors.set(color, v * 4);
     }
   }
