@@ -14,18 +14,25 @@
 import { decodedTiles, storedSwissTilesAround } from '../data/elevation-data.js';
 import { toProjected } from '../data/projection.js';
 import {
-  tileAt, cropGrid, createHeightSampler, computeSkyline, gridNorthOffset, magneticDeclination,
+  tileAt, cropTile, createHeightSampler, computeSkyline, gridNorthOffset, magneticDeclination,
 } from '../camera/local-terrain.js';
-import { classifyCells, SKIABLE, EXPOSED, TOO_STEEP, CLIFF } from '../camera/classify.js';
+import { buildHeightGrid } from '../data/height-grid.js';
+import { SKIABLE, EXPOSED, TOO_STEEP, CLIFF } from '../camera/classify.js';
 import { createOrientation, requestOrientationPermission } from '../camera/orientation.js';
+import { REACHABLE, CORRIDOR, HANG_TOO_STEEP } from '../routing/downhill.js';
+import { EXPOSED as ROUTE_EXPOSED } from '../routing/compute-route.js';
 
 export const THREE_URL = 'https://unpkg.com/three@0.169.0/build/three.module.min.js';
 
-const EYE_HEIGHT = 2.7; // metres above the ground
-const GRID_RADIUS = 400; // metres classified around the skier: Hänge and cliffs need context
+const EYE_HEIGHT = 1.7; // metres above the ground
+// The terrain is classified once for a large square around the skier (in a worker, so the view
+// keeps moving meanwhile) and kept: moving only cuts the drawn part out of it again, which is
+// quick. Only near the square's edge is a new one classified.
+const AREA_RADIUS = 1000; // metres classified around the skier
 const MESH_RADIUS = 250; // metres drawn
+const CONTEXT = 150; // metres beyond the drawn part that must be classified too (Hänge, cliffs)
 const STORED_RADIUS = 1500; // metres around the skier taken from the tile store
-const RECENTRE_DISTANCE = 40; // metres moved before the terrain is cut again
+const RECENTRE_DISTANCE = 20; // metres moved before the drawn part is cut again
 const RINGS = [10, 25, 50, 100, 200]; // distance rings, metres
 const MAX_GPS_ACCURACY = 100; // metres: coarser fixes (e.g. a laptop's Wi-Fi guess) aren't used
 const DEFAULT_FOV = 67; // degrees across the long side of the camera image (typical main camera)
@@ -36,11 +43,20 @@ const COLORS = {
   [TOO_STEEP]: [229, 57, 53, 125],
   [CLIFF]: [33, 33, 33, 170],
 };
+const DEAD_END = [255, 152, 0, 120]; // the route's orange: reachable from A, but no way on to B
+// The route's mask values in the colours above, as on the map.
+const ROUTE_COLORS = {
+  [CORRIDOR]: COLORS[SKIABLE],
+  [ROUTE_EXPOSED]: COLORS[EXPOSED],
+  [REACHABLE]: DEAD_END,
+  [HANG_TOO_STEEP]: COLORS[TOO_STEEP],
+};
 const deg = Math.PI / 180;
 
 // A button under "Mein Standort" that opens the camera view. settings() gives the panel's
-// current settings, fallbackPosition() a { latlng, label } to stand at without GPS.
-export function createCameraControl(map, { settings, fallbackPosition }) {
+// current settings, route() the route on the map ({ mask, grid } or null) and
+// fallbackPosition() a { latlng, label } to stand at without GPS.
+export function createCameraControl(map, { settings, route, fallbackPosition }) {
   const control = L.control({ position: 'topleft' });
   control.onAdd = () => {
     const bar = L.DomUtil.create('div', 'leaflet-bar camera-control');
@@ -52,7 +68,7 @@ export function createCameraControl(map, { settings, fallbackPosition }) {
     L.DomEvent.disableClickPropagation(bar);
     L.DomEvent.on(button, 'click', (e) => {
       L.DomEvent.preventDefault(e);
-      openCameraView({ settings: settings(), fallback: fallbackPosition() });
+      openCameraView({ settings: settings(), route: route(), fallback: fallbackPosition() });
     });
     return bar;
   };
@@ -61,7 +77,7 @@ export function createCameraControl(map, { settings, fallbackPosition }) {
 
 let open = false;
 
-function openCameraView({ settings, fallback }) {
+function openCameraView({ settings, route, fallback }) {
   if (open) return;
   open = true;
   // Both asked for in the tap itself, before anything is awaited (iOS needs that).
@@ -88,6 +104,7 @@ function openCameraView({ settings, fallback }) {
     <div class="camera-legend">
       <span><i style="background: rgb(46 125 50)"></i>Fahrbar</span>
       <span><i style="background: rgb(156 39 176)"></i>Exponiert</span>
+      <span class="camera-dead-end" hidden><i style="background: rgb(255 152 0)"></i>Sackgasse</span>
       <span><i style="background: rgb(229 57 53)"></i>Zu steil</span>
       <span><i style="background: rgb(33 33 33)"></i>Absturz</span>
     </div>
@@ -107,14 +124,14 @@ function openCameraView({ settings, fallback }) {
   import(THREE_URL)
     .then((THREE) => {
       if (!open) return;
-      close = startScene(THREE, { view, video, status, labels, stream, permission, settings, fallback, close });
+      close = startScene(THREE, { view, video, status, labels, stream, permission, settings, route, fallback, close });
     })
     .catch((err) => {
       status.textContent = `3D-Bibliothek konnte nicht geladen werden (${err.message})`;
     });
 }
 
-function startScene(THREE, { view, video, status, labels, stream, permission, settings, fallback, close: closeView }) {
+function startScene(THREE, { view, video, status, labels, stream, permission, settings, route, fallback, close: closeView }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   view.insertBefore(renderer.domElement, labels);
@@ -142,7 +159,8 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
   const forced = params?.length >= 2 && params.every(Number.isFinite)
     ? { latlng: { lat: params[0], lng: params[1] }, label: 'Testpunkt', heading: params[2], pitch: params[3] } : null;
   let position = null; // { latlng, accuracy, label }
-  let terrain = null; // see buildTerrain
+  let terrain = null; // the drawn part, see makeTerrain
+  let area = null; // the classified square: { crs, grid, classes, x, y, tiles }
   let building = false;
   let yawOffset = 0; // degrees, set by dragging (positive turns the view left)
   let pitchOffset = 0; // degrees (positive looks up)
@@ -185,23 +203,68 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
   };
 
   // --- Terrain -----------------------------------------------------------------------------
+  let worker = null;
+  let nextJob = 1;
+  const jobs = new Map(); // id -> { resolve, reject }
+  // Classifies `tile` in the worker; resolves to the classes per cell.
+  const classify = (tile) => new Promise((resolve, reject) => {
+    if (!worker) {
+      worker = new Worker(new URL('../camera/classify-worker.js', import.meta.url), { type: 'module' });
+      worker.onmessage = ({ data }) => {
+        const job = jobs.get(data.id);
+        jobs.delete(data.id);
+        if (data.error) job?.reject(new Error(data.error));
+        else job?.resolve(data.classes);
+      };
+      worker.onerror = (event) => {
+        for (const job of jobs.values()) job.reject(new Error(event.message || 'Worker'));
+        jobs.clear();
+      };
+    }
+    const id = nextJob++;
+    jobs.set(id, { resolve, reject });
+    worker.postMessage({ id, tile: { ...tile, heights: tile.heights.slice() }, settings });
+  });
+
+  // Classifies the square around `at` from the tiles in the browser. Leaves `area` as it was
+  // (and sets the message) if there are none here.
+  async function classifyArea(at) {
+    const stored = await storedSwissTilesAround(at, STORED_RADIUS).catch(() => []);
+    const urls = new Set();
+    const tiles = [...decodedTiles(), ...stored].filter((t) => !urls.has(t.url) && urls.add(t.url));
+    const hit = tileAt(tiles, at);
+    if (!hit) {
+      message = 'Keine Höhendaten hier. Erst zu Hause eine Route in dieser Gegend berechnen, dann sind sie gespeichert.';
+      return;
+    }
+    const tile = cropTile(tiles, hit.tile, hit.x, hit.y, AREA_RADIUS);
+    const classes = await classify(tile);
+    area = { crs: tile.crs, grid: buildHeightGrid([tile]), classes, x: hit.x, y: hit.y, tiles };
+  }
+
+  // Whether the drawn part around projected (x, y) and its context lie inside `area`.
+  const insideArea = (x, y) => area && Math.max(Math.abs(x - area.x), Math.abs(y - area.y)) <= AREA_RADIUS - MESH_RADIUS - CONTEXT
+    && Number.isFinite(area.grid.heights[area.grid.cellAtProjected(x, y)]);
+
   async function buildTerrain() {
     if (building) return;
     building = true;
     const at = position.latlng;
-    status.textContent = 'Gelände wird berechnet…';
     try {
-      const stored = await storedSwissTilesAround(at, STORED_RADIUS).catch(() => []);
-      const urls = new Set();
-      const tiles = [...decodedTiles(), ...stored].filter((t) => !urls.has(t.url) && urls.add(t.url));
-      const hit = tileAt(tiles, at);
-      if (!hit) {
-        message = 'Keine Höhendaten hier. Erst zu Hause eine Route in dieser Gegend berechnen, dann sind sie gespeichert.';
-        terrain ??= { crs: null };
-        return;
+      let here = area && toProjected(area.crs, at);
+      if (!insideArea(here?.x, here?.y)) {
+        status.textContent = 'Gelände wird berechnet…';
+        const t0 = performance.now();
+        await classifyArea(at);
+        if (!area) {
+          terrain ??= { crs: null };
+          return;
+        }
+        console.info(`Kamera: Gelände klassiert in ${Math.round(performance.now() - t0)} ms`);
+        here = toProjected(area.crs, at);
       }
-      await new Promise((resolve) => setTimeout(resolve, 30)); // let the status show first
-      const next = makeTerrain(THREE, tiles, hit, settings);
+      const next = makeTerrain(THREE, area, here.x, here.y, route);
+      view.querySelector('.camera-dead-end').hidden = !next.usesRoute;
       if (terrain?.group) {
         scene.remove(terrain.group);
         terrain.dispose();
@@ -218,7 +281,7 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
           pitchOffset = forced?.pitch ?? -12;
         }
       }
-      smoothed.copy(terrain.eyeAt(hit.x, hit.y));
+      smoothed.copy(terrain.eyeAt(here.x, here.y) ?? smoothed);
     } catch (err) {
       message = `Gelände: Fehler (${err.message})`;
       console.error(err);
@@ -390,20 +453,24 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
     terrain?.dispose?.();
     renderer.dispose();
     renderer.forceContextLoss();
+    worker?.terminate();
     closeView();
   }
   return stop;
 }
 
-// The 3D terrain around the tile hit `hit` ({ tile, x, y }): a mesh of the 2 m grid within
-// MESH_RADIUS, coloured by class, the distance rings and the skyline. The frame has its origin
+// The 3D terrain around projected (cx, cy), cut from the classified `area`: a mesh of the 2 m
+// grid within MESH_RADIUS, the distance rings and the skyline. Where the route on the map (`route`, or null)
+// covers the terrain it is coloured like the map: green on the way to B, orange for dead ends
+// and so on, and only steep terrain is coloured where the route can't get to. Elsewhere it is
+// coloured by class (see classify.js). The frame has its origin
 // at (cx, cy) and the ground there (h0): x = east, y = up, z = south, in metres.
-function makeTerrain(THREE, tiles, hit, settings) {
-  const { tile, x: cx, y: cy } = hit;
-  const grid = cropGrid(tiles, tile, cx, cy, GRID_RADIUS);
-  const classes = classifyCells(grid, settings);
-  const { west, north, cellSize, width } = grid.geometry;
+function makeTerrain(THREE, area, cx, cy, route) {
+  const { grid, classes, tiles, crs } = area;
+  const { west, north, cellSize, width, height } = grid.geometry;
   const { heights } = grid;
+  const routeGrid = route?.grid.crs === crs ? route.grid : null;
+  let usesRoute = false;
   const heightAtProjected = (x, y) => {
     const cell = grid.cellAtProjected(x, y);
     return cell < 0 ? NaN : heights[cell];
@@ -411,31 +478,42 @@ function makeTerrain(THREE, tiles, hit, settings) {
   const h0 = heightAtProjected(cx, cy);
   const group = new THREE.Group();
 
-  // Mesh: one vertex per cell centre within MESH_RADIUS (a square).
-  const first = Math.max(0, Math.floor((GRID_RADIUS - MESH_RADIUS) / cellSize));
-  const count = Math.min(width - first, Math.ceil((2 * MESH_RADIUS) / cellSize));
-  const positions = new Float32Array(count * count * 3);
-  const colors = new Uint8Array(count * count * 4);
-  for (let r = 0; r < count; r += 1) {
-    for (let c = 0; c < count; c += 1) {
-      const cell = (first + r) * width + first + c;
-      const v = r * count + c;
+  // Mesh: one vertex per cell centre within MESH_RADIUS (a square) of the area's grid.
+  const reach = Math.ceil(MESH_RADIUS / cellSize);
+  const firstRow = Math.max(0, Math.floor((north - cy) / cellSize) - reach);
+  const firstCol = Math.max(0, Math.floor((cx - west) / cellSize) - reach);
+  const rows = Math.min(height - firstRow, 2 * reach);
+  const cols = Math.min(width - firstCol, 2 * reach);
+  const positions = new Float32Array(rows * cols * 3);
+  const colors = new Uint8Array(rows * cols * 4);
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const cell = (firstRow + r) * width + firstCol + c;
+      const v = r * cols + c;
       const h = heights[cell];
-      positions[v * 3] = west + (first + c + 0.5) * cellSize - cx;
+      const x = west + (firstCol + c + 0.5) * cellSize;
+      const y = north - (firstRow + r + 0.5) * cellSize;
+      positions[v * 3] = x - cx;
       positions[v * 3 + 1] = Number.isFinite(h) ? h - h0 : 0;
-      positions[v * 3 + 2] = cy - (north - (first + r + 0.5) * cellSize);
-      const color = COLORS[classes[cell]];
+      positions[v * 3 + 2] = cy - y;
+      const routeCell = routeGrid ? routeGrid.cellAtProjected(x, y) : -1;
+      let color;
+      if (routeCell >= 0) {
+        usesRoute = true;
+        // Out of the route's reach only what is too steep anyway, as on the map nothing.
+        color = ROUTE_COLORS[route.mask[routeCell]] ?? (classes[cell] >= TOO_STEEP ? COLORS[classes[cell]] : null);
+      } else color = COLORS[classes[cell]];
       if (color) colors.set(color, v * 4);
     }
   }
   const index = [];
-  const valid = (r, c) => Number.isFinite(heights[(first + r) * width + first + c]);
-  for (let r = 0; r < count - 1; r += 1) {
-    for (let c = 0; c < count - 1; c += 1) {
+  const valid = (r, c) => Number.isFinite(heights[(firstRow + r) * width + firstCol + c]);
+  for (let r = 0; r < rows - 1; r += 1) {
+    for (let c = 0; c < cols - 1; c += 1) {
       if (!valid(r, c) || !valid(r, c + 1) || !valid(r + 1, c) || !valid(r + 1, c + 1)) continue;
-      const a = r * count + c;
+      const a = r * cols + c;
       const b = a + 1;
-      const d = a + count;
+      const d = a + cols;
       const e = d + 1;
       index.push(a, d, b, b, d, e); // counterclockwise seen from above
     }
@@ -482,7 +560,7 @@ function makeTerrain(THREE, tiles, hit, settings) {
   group.add(rings);
 
   // Skyline from the eye at the centre, drawn far away and on top of everything.
-  const sample = createHeightSampler(tiles, tile.crs);
+  const sample = createHeightSampler(tiles, crs);
   const skyline = computeSkyline(sample, cx, cy, h0 + EYE_HEIGHT);
   const skyPoints = [];
   const far = 3000;
@@ -510,13 +588,14 @@ function makeTerrain(THREE, tiles, hit, settings) {
   const latlng = grid.latLngOf(centreCell);
 
   return {
-    crs: tile.crs,
+    crs: crs,
     cx,
     cy,
     h0,
     group,
     downhill: Number.isFinite(downhill) ? downhill : 0,
-    northOffset: gridNorthOffset(tile.crs, latlng) + magneticDeclination(latlng),
+    usesRoute,
+    northOffset: gridNorthOffset(crs, latlng) + magneticDeclination(latlng),
     // Eye position in this frame above projected (x, y), or null without data there.
     eyeAt(x, y) {
       const h = heightAtProjected(x, y);

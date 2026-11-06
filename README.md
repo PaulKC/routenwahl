@@ -107,10 +107,15 @@ purple = skiable but exposed (a fall runs into a cliff), red = steeper than the 
 from danger level 3, its Hang is), dark = cliff (from the cliff angle). The rules are the
 route's (src/camera/classify.js), but without asking whether a cell can be reached from A.
 
-- Terrain: the 2 m grid within 250 m of the skier, classified over 400 m so Hänge and cliffs
-  just outside still count, drawn in 3D with three.js (0.169, cached by the service worker).
-  White distance rings at 10, 25, 50, 100 and 200 m; a yellow skyline from the tiles within
-  6 km. It is cut again after moving 40 m.
+- Terrain: the 2 m grid within 250 m of the skier, drawn in 3D with three.js (0.169, cached
+  by the service worker). White distance rings at 10, 25, 50, 100 and 200 m; a yellow skyline
+  from the tiles within 6 km.
+- Caching: the classes are computed once for a 2 × 2 km square around the skier, in a worker
+  (src/camera/classify-worker.js), so Hänge and cliffs beyond the drawn part count and the
+  view keeps moving meanwhile. Moving 20 m only cuts the drawn part out of that square again;
+  a new square is classified only within 450 m of its edge.
+- Route: where the route on the map covers the terrain it is coloured like the map (green to
+  B, orange dead ends, …); cells the route can't reach are only coloured when too steep.
 - Data: only tiles already in the browser (src/camera/local-terrain.js): those loaded this
   visit, plus Swiss tiles left in the tile store by earlier visits. Nothing is downloaded, so
   calculate a route in the area at home and the view works offline on the tour. Elsewhere

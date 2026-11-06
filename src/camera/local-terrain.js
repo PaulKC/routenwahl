@@ -36,10 +36,10 @@ export function createHeightSampler(tiles, crs) {
   };
 }
 
-// A height grid (see height-grid.js) of the square of 2 × radius metres around (x, y), on the
-// pixel grid of `anchor` (the tile under the skier) and cut from the tiles of its crs and
-// resolution. Cells no tile covers are NaN.
-export function cropGrid(tiles, anchor, x, y, radius) {
+// The heights of the square of 2 × radius metres around (x, y) as one tile, on the pixel grid
+// of `anchor` (the tile under the skier) and cut from the tiles of its crs and resolution.
+// Cells no tile covers are NaN.
+export function cropTile(tiles, anchor, x, y, radius) {
   const { crs, resolution: res } = anchor;
   const [ox, oy] = anchor.origin;
   const west = ox + Math.floor((x - radius - ox) / res) * res;
@@ -61,8 +61,11 @@ export function cropGrid(tiles, anchor, x, y, radius) {
       }
     }
   }
-  return buildHeightGrid([{ crs, origin: [west, north], width: size, height: size, resolution: res, heights }]);
+  return { crs, origin: [west, north], width: size, height: size, resolution: res, heights };
 }
+
+// The same square as a height grid (see height-grid.js).
+export const cropGrid = (tiles, anchor, x, y, radius) => buildHeightGrid([cropTile(tiles, anchor, x, y, radius)]);
 
 // Angle in degrees of true north in the projected grid, clockwise from the grid's north
 // (meridian convergence; up to about 2° in Switzerland).

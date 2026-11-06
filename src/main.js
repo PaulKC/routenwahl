@@ -29,9 +29,11 @@ const panel = createPanel({
 
 createSheets(map);
 createLocateControl(map, panel.showMessage);
-// Without GPS (e.g. on a laptop) the camera view stands at A, or else the map centre.
+// Without GPS (e.g. on a laptop) the camera view stands at A, or else the map centre. It
+// colours the terrain like the route on the map where there is one.
 createCameraControl(map, {
   settings: () => panel.settings(),
+  route: () => routes.current(),
   fallbackPosition: () => {
     const { start } = picker.latLngs();
     return start ? { latlng: start, label: 'Test: Punkt A' } : { latlng: map.getCenter(), label: 'Test: Kartenmitte' };
