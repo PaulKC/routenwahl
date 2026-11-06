@@ -8,10 +8,31 @@ const PARALLEL_DOWNLOADS = 6;
 // Decoded tiles of this page visit, keyed by URL, so moving a point only loads what is new.
 const tileCache = new Map();
 
+// Tile listings asked for this page visit: [{ region, bbox, tiles }]. Each listing covers a
+// margin beyond the area asked for, so moving A or B a little needs no new request (the
+// swisstopo listing takes about a second).
+const listings = [];
+const LISTING_MARGIN = 0.015; // degrees, about 1.1–1.7 km
+
+const contains = (outer, inner) => outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3];
+const overlaps = (tile, [west, south, east, north]) => {
+  const lats = tile.outline.map((p) => p.lat);
+  const lngs = tile.outline.map((p) => p.lng);
+  return Math.min(...lngs) < east && Math.max(...lngs) > west && Math.min(...lats) < north && Math.max(...lats) > south;
+};
+
 // Lists the tiles of `region` covering bbox [west, south, east, north] (WGS84).
 export async function findElevationTiles(region, bbox, signal) {
-  const tiles = await region.findTiles(bbox, signal);
-  return tiles.map((tile) => ({ ...tile, crs: region.crs }));
+  let listing = listings.find((l) => l.region === region && contains(l.bbox, bbox));
+  if (!listing) {
+    const [west, south, east, north] = bbox;
+    const wide = [west - LISTING_MARGIN, south - LISTING_MARGIN, east + LISTING_MARGIN, north + LISTING_MARGIN];
+    const tiles = (await region.findTiles(wide, signal)).map((tile) => ({ ...tile, crs: region.crs }));
+    listing = { region, bbox: wide, tiles };
+    listings.push(listing);
+    if (listings.length > 20) listings.shift();
+  }
+  return listing.tiles.filter((tile) => overlaps(tile, bbox));
 }
 
 // Whether `region` has an elevation value at `latlng`. Regions are boxes that overlap at

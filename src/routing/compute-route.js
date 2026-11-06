@@ -2,7 +2,7 @@
 // route worker (see route-worker.js), so it must not touch the page or Leaflet.
 import { findDownhillRoutes, cellsWithin, CORRIDOR } from './downhill.js';
 import { findExposedCells } from './exposure.js';
-import { findHangs } from './hang.js';
+import { findHangs, hangsKnown } from './hang.js';
 import { coreZoneMask } from './core-zone.js';
 import { noGoMask } from './no-go.js';
 import { wholeSlopeAnywhere } from './energy-model.js';
@@ -10,7 +10,7 @@ import { wholeSlopeAnywhere } from './energy-model.js';
 export const EXPOSED = 3; // mask value: corridor cell whose fall line runs into a cliff
 
 // Number of steps computeRoute reports through onStep (if a route is found).
-export const routeSteps = (settings) => (wholeSlopeAnywhere(settings) || settings.showHangs ? 1 : 0) + 2;
+export const routeSteps = (grid, settings) => ((wholeSlopeAnywhere(settings) || settings.showHangs) && !hangsKnown(grid, settings) ? 1 : 0) + 2;
 
 // onStep(label) is called before each step, so the page can show progress.
 export function computeRoute(grid, start, end, settings, onStep = () => {}) {
@@ -21,7 +21,7 @@ export function computeRoute(grid, start, end, settings, onStep = () => {}) {
 
   let hangs = null;
   if (wholeSlopeAnywhere(settings) || settings.showHangs) {
-    onStep('Hänge abgrenzen');
+    if (!hangsKnown(grid, settings)) onStep('Hänge abgrenzen'); // else cached from the last route
     hangs = findHangs(grid, settings); // cached for the steps below
   }
   // The skier may set off anywhere within goalRadius of A, as they may arrive anywhere near B.

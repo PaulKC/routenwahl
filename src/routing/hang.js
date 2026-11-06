@@ -32,6 +32,10 @@ export function findHangs(grid, settings) {
 
 export const hangSlopes = (grid, settings) => findHangs(grid, settings).slopes;
 
+// Whether findHangs has the Hänge of this grid and settings already.
+export const hangsKnown = (grid, settings) => cache.get(grid)?.key
+  === `${settings.patchSize}/${settings.hangAngle}/${settings.rockAngle}/${settings.ribAngle}/${settings.aspectSplit}`;
+
 // Median slope and mean downhill direction (unit vector east/south) of the patch around each cell.
 // The median comes from a histogram of the window's slopes in 0.1° bins that slides along each
 // row: moving one cell on adds the column entering the window and removes the one leaving it,

@@ -1,5 +1,5 @@
 // Shows the downhill corridor and an example route on the map. The calculation runs in a
-// Web Worker; starting a new one while another is running cancels the old one.
+// Web Worker; a new one waits for the one running (see compute), whose result is then dropped.
 import { createGridGeometry } from '../data/height-grid.js';
 import { REACHABLE, CORRIDOR, HANG_TOO_STEEP } from '../routing/downhill.js';
 import { EXPOSED } from '../routing/compute-route.js';
@@ -29,29 +29,44 @@ export function createRouteLayer(map, showStatus) {
   const group = L.layerGroup().addTo(map);
   let last = null; // { tiles, start, end, settings } of the current calculation
   let worker = null;
-  let workerTiles = null; // tiles the worker already has a height grid for
-  let running = null; // id of the calculation in progress, or null
+  // The worker keeps the height grid of the tiles it was sent last, and with it everything that
+  // doesn't depend on A and B (slopes, Hänge, ...), which is most of the work. So it is only
+  // sent tiles when they change, and isn't interrupted while it has the right ones: a newer
+  // calculation waits for the current one, whose result is then dropped.
+  let workerTiles = null; // key of the tiles the worker has a height grid for
+  let busy = null; // id of the calculation the worker is running, or null
+  let wanted = null; // id of the calculation whose result is to be shown, or null
+  let waiting = null; // { id, message, key } to send when the worker is done
   let nextId = 1;
   let hoverOff = null; // removes the debug view's hover tooltip
+  let shown = null; // { mask, grid } of the route on the map, for the camera view
 
   function startWorker() {
     worker = new Worker(new URL('../routing/route-worker.js', import.meta.url), { type: 'module' });
     worker.onmessage = ({ data }) => show(data);
-    worker.onerror = (event) => show({ id: running, error: event.message });
+    worker.onerror = (event) => show({ id: busy, error: event.message });
     workerTiles = null;
+    busy = null;
   }
 
-  // Stops a calculation in progress. Terminating is the only way to interrupt the worker.
-  function cancel() {
-    if (running === null) return;
-    worker.terminate();
-    worker = null;
-    running = null;
+  const tilesKey = (tiles) => tiles.map((tile) => tile.url ?? `${tile.origin}`).sort().join('|');
+
+  // Sends a calculation, with the tiles only if the worker doesn't have them yet.
+  function send({ id, message, key, tiles }) {
+    const plainTiles = key === workerTiles ? null
+      : tiles.map(({ crs, origin, width, height, resolution, heights }) => ({ crs, origin, width, height, resolution, heights }));
+    worker.postMessage({ id, tiles: plainTiles, ...message });
+    busy = id;
+    workerTiles = key;
   }
 
+  // Removes the route; a calculation in progress runs on (keeping the worker's caches), but its
+  // result isn't shown.
   function clear() {
-    cancel();
+    wanted = null;
+    waiting = null;
     last = null;
+    shown = null;
     group.clearLayers();
     hoverOff?.();
     hoverOff = null;
@@ -61,17 +76,23 @@ export function createRouteLayer(map, showStatus) {
   function compute(tiles, start, end, settings) {
     clear();
     last = { tiles, start, end, settings };
+    const key = tilesKey(tiles);
+    // Other tiles: the worker's caches are of no use, so stop it rather than wait for it.
+    if (worker && busy !== null && key !== workerTiles) {
+      worker.terminate();
+      worker = null;
+    }
     if (!worker) startWorker();
-    running = nextId++;
+    const id = nextId++;
+    wanted = id;
     const plain = (ll) => ({ lat: ll.lat, lng: ll.lng });
-    worker.postMessage({
-      id: running,
-      tiles: workerTiles === tiles ? null : tiles.map(({ crs, origin, width, height, resolution, heights }) => ({ crs, origin, width, height, resolution, heights })),
+    const message = {
       start: plain(start),
       end: plain(end),
       settings,
-    });
-    workerTiles = tiles;
+    };
+    if (busy === null) send({ id, message, key, tiles });
+    else waiting = { id, message, key, tiles };
     showStatus('Route wird berechnet…', { label: 'Start', done: 0, total: 1 });
   }
 
@@ -81,17 +102,26 @@ export function createRouteLayer(map, showStatus) {
   }
 
   function show({ id, progress, result, geometry, error }) {
-    if (id !== running) return; // an older calculation that was replaced
     if (progress) {
-      showStatus(`Route wird berechnet: ${progress.label}`, progress);
+      if (id === wanted) showStatus(`Route wird berechnet: ${progress.label}`, progress);
       return;
     }
-    running = null;
+    if (id === busy) {
+      busy = null;
+      if (error) workerTiles = null; // its grid may be broken: send the tiles again
+      if (waiting) {
+        send(waiting);
+        waiting = null;
+      }
+    }
+    if (id !== wanted) return; // an older calculation that was replaced
+    wanted = null;
     if (error) {
       showStatus('Route: Fehler bei der Berechnung', null, error);
       return;
     }
     const grid = createGridGeometry(geometry);
+    if (result.mask) shown = { mask: result.mask, grid };
     if (result.zoneMask) drawCells(grid, result.zoneMask, () => ZONE_COLOR); // debug view
     if (result.hangLabels) showHangs(grid, result.hangLabels, result.hangSteepest);
     if (result.mask) drawCells(grid, result.mask, (value) => COLORS[value]);
@@ -178,7 +208,11 @@ export function createRouteLayer(map, showStatus) {
     L.imageOverlay(canvas.toDataURL(), bounds, { className: 'pixelated' }).addTo(group);
   }
 
-  return { compute, recompute, clear };
+  // The mask of the route on the map (see downhill.js and compute-route.js for its values) and
+  // its grid, or null.
+  const current = () => shown;
+
+  return { compute, recompute, clear, current };
 }
 
 // { summary, details }: a short line for the panel and the full explanation for "Erweitert".

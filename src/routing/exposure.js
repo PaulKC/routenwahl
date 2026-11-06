@@ -75,8 +75,21 @@ export function findExposedCells(grid, test, { fallDistance, cliffAngle, minFall
     }
   };
 
+  // Whether a cell's fall line runs into a cliff doesn't depend on A, B or the max angle, so
+  // the answer is kept per cell (1 = exposed, 2 = not) for the next route on this grid.
+  const key = `${fallDistance}/${cliffAngle}/${minFallHeight}`;
+  let known = knownCache.get(grid);
+  if (known?.key !== key) {
+    known = { key, cells: new Uint8Array(size) };
+    knownCache.set(grid, known);
+  }
+  const { cells } = known;
   for (let cell = 0; cell < size; cell += 1) {
-    if (test(cell) && fallsOffCliff(cell)) exposed[cell] = 1;
+    if (!test(cell)) continue;
+    if (!cells[cell]) cells[cell] = fallsOffCliff(cell) ? 1 : 2;
+    if (cells[cell] === 1) exposed[cell] = 1;
   }
   return exposed;
 }
+
+const knownCache = new WeakMap(); // grid -> { key, cells }, see the end of findExposedCells

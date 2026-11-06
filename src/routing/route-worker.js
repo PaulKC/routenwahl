@@ -11,7 +11,7 @@ let grid = null; // height grid of the last tiles sent, reused while only settin
 
 self.onmessage = ({ data: { id, tiles, start, end, settings } }) => {
   try {
-    const total = routeSteps(settings) + (tiles ? 1 : 0);
+    const total = routeSteps(tiles ? null : grid, settings) + (tiles ? 1 : 0); // a new grid has no Hänge yet
     let done = 0;
     const onStep = (label) => self.postMessage({ id, progress: { label, done: done++, total } });
     if (tiles) {
