@@ -5,7 +5,7 @@
 //   - Everything else (map and elevation tiles, SLF bulletin, place search) is left to the
 //     browser. Elevation tiles have their own cache (src/data/tile-store.js), which this
 //     worker never touches.
-const CACHE = 'skitour-app-v4';
+const CACHE = 'skitour-app-v5';
 
 const APP_FILES = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
@@ -20,6 +20,7 @@ const APP_FILES = [
   'src/ui/points.js', 'src/ui/route-layer.js', 'src/ui/search.js', 'src/ui/zone-picker.js', 'src/ui/wildlife-layer.js',
   'src/ui/sheets.js', 'src/ui/locate.js', 'src/ui/camera-view.js',
   'src/camera/classify.js', 'src/camera/classify-worker.js', 'src/camera/local-terrain.js', 'src/camera/orientation.js',
+  'src/camera/terrain-area.js', 'src/camera/terrain-mesh.js', 'src/camera/alignment.js',
 ];
 const LIBRARIES = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

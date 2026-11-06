@@ -11,32 +11,21 @@
 // Only elevation tiles already in the browser are used, never downloaded. Without a GPS
 // fix (e.g. on a laptop) the view stands at A, or the map centre, and dragging looks around;
 // ?cam=lat,lng[,heading[,pitch]] in the address puts it at a given point, looking that way.
-import { decodedTiles, storedSwissTilesAround } from '../data/elevation-data.js';
+//
+// The parts live in src/camera: terrain-area.js classifies the terrain around the skier,
+// terrain-mesh.js draws it, alignment.js handles dragging and pinching, orientation.js the
+// sensors. This file opens and closes the view and runs the render loop.
 import { toProjected } from '../data/projection.js';
-import {
-  tileAt, cropTile, createHeightSampler, computeSkyline, gridNorthOffset, magneticDeclination,
-} from '../camera/local-terrain.js';
-import { buildHeightGrid } from '../data/height-grid.js';
 import { createOrientation, requestOrientationPermission } from '../camera/orientation.js';
-import {
-  CAMERA, CAMERA_COLORS, ROUTE_CAMERA_COLORS, GREEN, PURPLE, ORANGE, RED, DARK,
-} from '../terrain-classes.js';
+import { createAreaClassifier, areaCovers } from '../camera/terrain-area.js';
+import { makeTerrain, EYE_HEIGHT, RINGS } from '../camera/terrain-mesh.js';
+import { createAlignment, DEFAULT_FOV } from '../camera/alignment.js';
+import { GREEN, PURPLE, ORANGE, RED, DARK } from '../terrain-classes.js';
 
 export const THREE_URL = 'https://unpkg.com/three@0.169.0/build/three.module.min.js';
 
-const EYE_HEIGHT = 1.7; // metres above the ground
-// The terrain is classified once for a large square around the skier (in a worker, so the view
-// keeps moving meanwhile) and kept: moving only cuts the drawn part out of it again, which is
-// quick. Only near the square's edge is a new one classified.
-const AREA_RADIUS = 1000; // metres classified around the skier
-const MESH_RADIUS = 250; // metres drawn
-const CONTEXT = 150; // metres beyond the drawn part that must be classified too (Hänge, cliffs)
-const STORED_RADIUS = 1500; // metres around the skier taken from the tile store
 const RECENTRE_DISTANCE = 20; // metres moved before the drawn part is cut again
-const RINGS = [10, 25, 50, 100, 200]; // distance rings, metres
 const MAX_GPS_ACCURACY = 100; // metres: coarser fixes (e.g. a laptop's Wi-Fi guess) aren't used
-const DEFAULT_FOV = 67; // degrees across the long side of the camera image (typical main camera)
-const FOV_KEY = 'skitour-camera-fov';
 const deg = Math.PI / 180;
 const rgb = ([r, g, b]) => `rgb(${r} ${g} ${b})`;
 
@@ -147,12 +136,12 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
     ? { latlng: { lat: params[0], lng: params[1] }, label: 'Testpunkt', heading: params[2], pitch: params[3] } : null;
   let position = null; // { latlng, accuracy, label }
   let terrain = null; // the drawn part, see makeTerrain
-  let area = null; // the classified square: { crs, grid, classes, x, y, tiles }
+  let area = null; // the classified square, see terrain-area.js
+  const areas = createAreaClassifier(settings);
   let building = false;
-  let yawOffset = 0; // degrees, set by dragging (positive turns the view left)
-  let pitchOffset = 0; // degrees (positive looks up)
+  // Turned and zoomed by hand on top of the sensors: { yaw, pitch, fov }, see alignment.js.
+  const alignment = createAlignment(view, () => camera.fov / view.clientHeight);
   let headingSet = false; // the initial view direction without sensors has been chosen
-  let fovLong = Number(localStorage.getItem(FOV_KEY)) || DEFAULT_FOV;
   let message = '';
   const smoothed = new THREE.Vector3(); // camera position in the terrain's frame
   const shown = new THREE.Quaternion(); // sensor orientation, smoothed
@@ -190,59 +179,21 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
   };
 
   // --- Terrain -----------------------------------------------------------------------------
-  let worker = null;
-  let nextJob = 1;
-  const jobs = new Map(); // id -> { resolve, reject }
-  // Classifies `tile` in the worker; resolves to the classes per cell.
-  const classify = (tile) => new Promise((resolve, reject) => {
-    if (!worker) {
-      worker = new Worker(new URL('../camera/classify-worker.js', import.meta.url), { type: 'module' });
-      worker.onmessage = ({ data }) => {
-        const job = jobs.get(data.id);
-        jobs.delete(data.id);
-        if (data.error) job?.reject(new Error(data.error));
-        else job?.resolve(data.classes);
-      };
-      worker.onerror = (event) => {
-        for (const job of jobs.values()) job.reject(new Error(event.message || 'Worker'));
-        jobs.clear();
-      };
-    }
-    const id = nextJob++;
-    jobs.set(id, { resolve, reject });
-    worker.postMessage({ id, tile: { ...tile, heights: tile.heights.slice() }, settings });
-  });
-
-  // Classifies the square around `at` from the tiles in the browser. Leaves `area` as it was
-  // (and sets the message) if there are none here.
-  async function classifyArea(at) {
-    const stored = await storedSwissTilesAround(at, STORED_RADIUS).catch(() => []);
-    const urls = new Set();
-    const tiles = [...decodedTiles(), ...stored].filter((t) => !urls.has(t.url) && urls.add(t.url));
-    const hit = tileAt(tiles, at);
-    if (!hit) {
-      message = 'Keine Höhendaten hier. Erst zu Hause eine Route in dieser Gegend berechnen, dann sind sie gespeichert.';
-      return;
-    }
-    const tile = cropTile(tiles, hit.tile, hit.x, hit.y, AREA_RADIUS);
-    const classes = await classify(tile);
-    area = { crs: tile.crs, grid: buildHeightGrid([tile]), classes, x: hit.x, y: hit.y, tiles };
-  }
-
-  // Whether the drawn part around projected (x, y) and its context lie inside `area`.
-  const insideArea = (x, y) => area && Math.max(Math.abs(x - area.x), Math.abs(y - area.y)) <= AREA_RADIUS - MESH_RADIUS - CONTEXT
-    && Number.isFinite(area.grid.heights[area.grid.cellAtProjected(x, y)]);
-
+  // Cuts the drawn part around the current position out of `area`, classifying a new area
+  // first if the position is near its edge. Without tiles here the old area is kept (and the
+  // message says so).
   async function buildTerrain() {
     if (building) return;
     building = true;
     const at = position.latlng;
     try {
       let here = area && toProjected(area.crs, at);
-      if (!insideArea(here?.x, here?.y)) {
+      if (!areaCovers(area, here?.x, here?.y)) {
         status.textContent = 'Gelände wird berechnet…';
         const t0 = performance.now();
-        await classifyArea(at);
+        const next = await areas.classifyAround(at);
+        if (next) area = next;
+        else message = 'Keine Höhendaten hier. Erst zu Hause eine Route in dieser Gegend berechnen, dann sind sie gespeichert.';
         if (!area) {
           terrain ??= { crs: null };
           return;
@@ -264,8 +215,8 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
         headingSet = true;
         // Without sensors look downhill (or as given), slightly down.
         if (!orientation.current()) {
-          yawOffset = -(forced?.heading ?? terrain.downhill);
-          pitchOffset = forced?.pitch ?? -12;
+          alignment.yaw = -(forced?.heading ?? terrain.downhill);
+          alignment.pitch = forced?.pitch ?? -12;
         }
       }
       smoothed.copy(terrain.eyeAt(here.x, here.y) ?? smoothed);
@@ -278,56 +229,7 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
     }
   }
 
-  // --- Interaction -------------------------------------------------------------------------
-  const pointers = new Map();
-  let pinch = null;
-  const degPerPixel = () => camera.fov / view.clientHeight;
-  const onDown = (e) => {
-    if (e.target.closest('button')) return;
-    view.setPointerCapture(e.pointerId);
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      pinch = { distance: Math.hypot(a.x - b.x, a.y - b.y), fov: fovLong };
-    }
-  };
-  const onMove = (e) => {
-    const last = pointers.get(e.pointerId);
-    if (!last) return;
-    const point = { x: e.clientX, y: e.clientY };
-    pointers.set(e.pointerId, point);
-    if (pointers.size === 1) {
-      // The overlay follows the finger: dragging right turns the view left.
-      yawOffset += (point.x - last.x) * degPerPixel();
-      pitchOffset = Math.max(-80, Math.min(80, pitchOffset + (point.y - last.y) * degPerPixel()));
-    } else if (pinch && pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      setFov(pinch.fov, pinch.distance / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)));
-    }
-  };
-  const onUp = (e) => {
-    pointers.delete(e.pointerId);
-    if (pointers.size < 2) pinch = null;
-  };
-  // Spreading the fingers makes the overlay bigger: a narrower field of view.
-  const setFov = (from, scale) => {
-    const half = Math.atan(Math.tan((from * deg) / 2) * scale) / deg;
-    fovLong = Math.max(20, Math.min(120, 2 * half));
-    try {
-      localStorage.setItem(FOV_KEY, String(fovLong));
-    } catch {
-      // storage blocked: the setting lasts until the view closes
-    }
-  };
-  const onWheel = (e) => {
-    e.preventDefault();
-    setFov(fovLong, Math.exp(e.deltaY * 0.001));
-  };
-  view.addEventListener('pointerdown', onDown);
-  view.addEventListener('pointermove', onMove);
-  view.addEventListener('pointerup', onUp);
-  view.addEventListener('pointercancel', onUp);
-  view.addEventListener('wheel', onWheel, { passive: false });
+  // --- Buttons -----------------------------------------------------------------------------
   const terrainButton = view.querySelector('.camera-terrain');
   terrainButton.addEventListener('click', () => {
     const on = terrainButton.getAttribute('aria-pressed') !== 'true';
@@ -335,9 +237,9 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
     terrain?.setShaded?.(on);
   });
   view.querySelector('.camera-reset').addEventListener('click', () => {
-    yawOffset = orientation.current() ? 0 : -(forced?.heading ?? terrain?.downhill ?? 0);
-    pitchOffset = orientation.current() ? 0 : -12;
-    setFov(DEFAULT_FOV, 1);
+    alignment.yaw = orientation.current() ? 0 : -(forced?.heading ?? terrain?.downhill ?? 0);
+    alignment.pitch = orientation.current() ? 0 : -12;
+    alignment.setFov(DEFAULT_FOV, 1);
   });
   const onKey = (e) => {
     if (e.key === 'Escape') stop();
@@ -371,7 +273,7 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
     // The field of view spans the long side of the camera image, shown cropped to fill the
     // screen (object-fit: cover); without video the screen is the image.
     const [imageW, imageH] = hasVideo && video.videoWidth ? [video.videoWidth, video.videoHeight] : [width, height];
-    const focal = Math.max(imageW, imageH) / 2 / Math.tan((fovLong * deg) / 2); // in image pixels
+    const focal = Math.max(imageW, imageH) / 2 / Math.tan((alignment.fov * deg) / 2); // in image pixels
     const scale = Math.max(width / imageW, height / imageH);
     camera.fov = (2 * Math.atan(height / 2 / (focal * scale))) / deg;
     camera.updateProjectionMatrix();
@@ -382,13 +284,13 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
       else shown.copy(sensor);
       shownValid = true;
     }
-    camera.quaternion.setFromAxisAngle(yAxis, yawOffset * deg);
+    camera.quaternion.setFromAxisAngle(yAxis, alignment.yaw * deg);
     if (sensor && orientation.absolute && terrain?.northOffset !== undefined) {
       // The sensors point to magnetic north, the terrain's frame to its grid's north.
       camera.quaternion.multiply(north.setFromAxisAngle(yAxis, -terrain.northOffset * deg));
     }
     if (sensor) camera.quaternion.multiply(shown);
-    camera.quaternion.multiply(turn.setFromAxisAngle(xAxis, pitchOffset * deg));
+    camera.quaternion.multiply(turn.setFromAxisAngle(xAxis, alignment.pitch * deg));
 
     if (terrain?.group && position) {
       const { x, y } = projected();
@@ -440,166 +342,8 @@ function startScene(THREE, { view, video, status, labels, stream, permission, se
     terrain?.dispose?.();
     renderer.dispose();
     renderer.forceContextLoss();
-    worker?.terminate();
+    areas.terminate();
     closeView();
   }
   return stop;
-}
-
-// The 3D terrain around projected (cx, cy), cut from the classified `area`: a mesh of the 2 m
-// grid within MESH_RADIUS, the distance rings and the skyline. Where the route on the map (`route`, or null)
-// covers the terrain it is coloured like the map: green on the way to B, orange for dead ends
-// and so on, and only steep terrain is coloured where the route can't get to. Elsewhere it is
-// coloured by class (see classify.js). The frame has its origin
-// at (cx, cy) and the ground there (h0): x = east, y = up, z = south, in metres.
-function makeTerrain(THREE, area, cx, cy, route) {
-  const { grid, classes, tiles, crs } = area;
-  const { west, north, cellSize, width, height } = grid.geometry;
-  const { heights } = grid;
-  const routeGrid = route?.grid.crs === crs ? route.grid : null;
-  let usesRoute = false;
-  const heightAtProjected = (x, y) => {
-    const cell = grid.cellAtProjected(x, y);
-    return cell < 0 ? NaN : heights[cell];
-  };
-  const h0 = heightAtProjected(cx, cy);
-  const group = new THREE.Group();
-
-  // Mesh: one vertex per cell centre within MESH_RADIUS (a square) of the area's grid.
-  const reach = Math.ceil(MESH_RADIUS / cellSize);
-  const firstRow = Math.max(0, Math.floor((north - cy) / cellSize) - reach);
-  const firstCol = Math.max(0, Math.floor((cx - west) / cellSize) - reach);
-  const rows = Math.min(height - firstRow, 2 * reach);
-  const cols = Math.min(width - firstCol, 2 * reach);
-  const positions = new Float32Array(rows * cols * 3);
-  const colors = new Uint8Array(rows * cols * 4);
-  for (let r = 0; r < rows; r += 1) {
-    for (let c = 0; c < cols; c += 1) {
-      const cell = (firstRow + r) * width + firstCol + c;
-      const v = r * cols + c;
-      const h = heights[cell];
-      const x = west + (firstCol + c + 0.5) * cellSize;
-      const y = north - (firstRow + r + 0.5) * cellSize;
-      positions[v * 3] = x - cx;
-      positions[v * 3 + 1] = Number.isFinite(h) ? h - h0 : 0;
-      positions[v * 3 + 2] = cy - y;
-      const routeCell = routeGrid ? routeGrid.cellAtProjected(x, y) : -1;
-      let color;
-      if (routeCell >= 0) {
-        usesRoute = true;
-        // Out of the route's reach only what is too steep anyway, as on the map nothing.
-        color = ROUTE_CAMERA_COLORS[route.mask[routeCell]] ?? (classes[cell] >= CAMERA.TOO_STEEP ? CAMERA_COLORS[classes[cell]] : null);
-      } else color = CAMERA_COLORS[classes[cell]];
-      if (color) colors.set(color, v * 4);
-    }
-  }
-  const index = [];
-  const valid = (r, c) => Number.isFinite(heights[(firstRow + r) * width + firstCol + c]);
-  for (let r = 0; r < rows - 1; r += 1) {
-    for (let c = 0; c < cols - 1; c += 1) {
-      if (!valid(r, c) || !valid(r, c + 1) || !valid(r + 1, c) || !valid(r + 1, c + 1)) continue;
-      const a = r * cols + c;
-      const b = a + 1;
-      const d = a + cols;
-      const e = d + 1;
-      index.push(a, d, b, b, d, e); // counterclockwise seen from above
-    }
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4, true));
-  geometry.setIndex(index.length > 65535 ? new THREE.Uint32BufferAttribute(index, 1) : new THREE.Uint16BufferAttribute(index, 1));
-  geometry.computeVertexNormals();
-
-  // Drawn twice: first only into the depth buffer, so the colours of terrain hidden behind a
-  // ridge or a bump don't show through, then the colours on top. With "Gelände" on, the first
-  // pass draws the terrain grey and shaded instead.
-  const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false });
-  const shaded = new THREE.MeshLambertMaterial({ color: 0xe8e8e8 });
-  const base = new THREE.Mesh(geometry, depthOnly);
-  base.renderOrder = 0;
-  const colored = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-    vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-  }));
-  colored.renderOrder = 1;
-  group.add(base, colored);
-
-  // Distance rings around the centre of the terrain, a little above the ground, as segments
-  // that skip where there is no data.
-  const ringPoints = [];
-  for (const radius of RINGS) {
-    const steps = Math.max(48, Math.round(radius * 2));
-    let previous = null;
-    for (let i = 0; i <= steps; i += 1) {
-      const az = (i / steps) * 2 * Math.PI;
-      const px = cx + radius * Math.sin(az);
-      const py = cy + radius * Math.cos(az);
-      const h = heightAtProjected(px, py);
-      const point = Number.isFinite(h) ? [px - cx, h - h0 + 0.3, cy - py] : null;
-      if (point && previous) ringPoints.push(...previous, ...point);
-      previous = point;
-    }
-  }
-  const ringGeometry = new THREE.BufferGeometry();
-  ringGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ringPoints, 3));
-  const rings = new THREE.LineSegments(ringGeometry, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
-  rings.renderOrder = 2;
-  group.add(rings);
-
-  // Skyline from the eye at the centre, drawn far away and on top of everything.
-  const sample = createHeightSampler(tiles, crs);
-  const skyline = computeSkyline(sample, cx, cy, h0 + EYE_HEIGHT);
-  const skyPoints = [];
-  const far = 3000;
-  const skyPoint = (i) => {
-    const angle = skyline[i % skyline.length];
-    if (!Number.isFinite(angle)) return null;
-    const az = ((i % skyline.length) / skyline.length) * 2 * Math.PI;
-    return [far * Math.cos(angle) * Math.sin(az), EYE_HEIGHT + far * Math.sin(angle), -far * Math.cos(angle) * Math.cos(az)];
-  };
-  for (let i = 0; i < skyline.length; i += 1) {
-    const a = skyPoint(i);
-    const b = skyPoint(i + 1);
-    if (a && b) skyPoints.push(...a, ...b);
-  }
-  const skyGeometry = new THREE.BufferGeometry();
-  skyGeometry.setAttribute('position', new THREE.Float32BufferAttribute(skyPoints, 3));
-  const sky = new THREE.LineSegments(skyGeometry, new THREE.LineBasicMaterial({ color: 0xffeb3b, depthTest: false, transparent: true, opacity: 0.9 }));
-  sky.renderOrder = 3;
-  group.add(sky);
-
-  // Downhill direction at the centre, clockwise from grid north, for the first view without sensors.
-  const { dzdx, dzdy } = grid.gradients();
-  const centreCell = grid.cellAtProjected(cx, cy);
-  const downhill = (Math.atan2(-dzdx[centreCell], dzdy[centreCell]) / deg + 360) % 360;
-  const latlng = grid.latLngOf(centreCell);
-
-  return {
-    crs: crs,
-    cx,
-    cy,
-    h0,
-    group,
-    downhill: Number.isFinite(downhill) ? downhill : 0,
-    usesRoute,
-    northOffset: gridNorthOffset(crs, latlng) + magneticDeclination(latlng),
-    // Eye position in this frame above projected (x, y), or null without data there.
-    eyeAt(x, y) {
-      const h = heightAtProjected(x, y);
-      return Number.isFinite(h) ? new THREE.Vector3(x - cx, h - h0 + EYE_HEIGHT, cy - y) : null;
-    },
-    // Ground height in this frame at frame coordinates (x, z).
-    heightAtLocal: (x, z) => heightAtProjected(cx + x, cy - z) - h0,
-    setShaded(on) {
-      base.material = on ? shaded : depthOnly;
-    },
-    dispose() {
-      for (const object of [base, colored, rings, sky]) {
-        object.geometry.dispose();
-        object.material.dispose();
-      }
-      depthOnly.dispose();
-      shaded.dispose();
-    },
-  };
 }
